@@ -19,6 +19,8 @@ package junit.beforeClassException;
  * under the License.
  */
 
+import org.junit.BeforeClass;
+
 /**
  * A class with a BeforeClass that throws.
  */
@@ -26,6 +28,7 @@ public class BaseClassWithBeforeClassThatThrows {
 
     static Object nullPointerObject;
 
+    @BeforeClass
     public static void baseBeforeClass() {
         nullPointerObject.notify();
     }
