@@ -60,6 +60,7 @@
     <module>maven-surefire-report-plugin</module>
     <module>surefire-setup-integration-tests</module>
     <module>surefire-integration-tests</module>
+    <module>../maven-surefire-extensions</module>
   </modules>
 
   <scm>
@@ -93,6 +94,11 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.apache.maven.surefire</groupId>
+        <artifactId>maven-surefire-extensions</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.apache.maven.surefire</groupId>
         <artifactId>surefire-api</artifactId>
