@@ -18,12 +18,14 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
-import org.apache.maven.surefire.testset.RunOrderParameters;
-
 import junit.framework.TestCase;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 
 /**
  * @author Kristian Rosenvold
@@ -41,6 +43,73 @@ public class RunOrderCalculatorTest
         final TestsToRun testsToRun1 = runOrderCalculator.orderTestClasses( testsToRun );
         assertEquals( A.class, testsToRun1.iterator().next() );
 
+    }
+
+    public void testOrderTestClassesWithRandom()
+    {
+        getClassesToRun();
+        TestsToRun testsToRun = new TestsToRun( getClassesToRun() );
+        RunOrderCalculator runOrderCalculator = new DefaultRunOrderCalculator( randomizedWith("424242"), 1 );
+        final TestsToRun testsToRun1 = runOrderCalculator.orderTestClasses( testsToRun );
+        Iterator<Class<?>> iter = testsToRun1.iterator();
+        assertEquals( A.class, iter.next() );
+        assertEquals( B.class, iter.next() );
+
+        TestsToRun testsToRun2 = runOrderCalculator.orderTestClasses(testsToRun);
+        iter = testsToRun2.iterator();
+        assertEquals( A.class, iter.next() );
+        assertEquals( B.class, iter.next() );
+    }
+
+    public void testOrderTestClassesWithRandomized()
+    {
+        getClassesToRun();
+        TestsToRun testsToRun = new TestsToRun( getClassesToRun() );
+        RunOrderCalculator runOrderCalculator = new DefaultRunOrderCalculator( randomized(), 1 );
+        final TestsToRun testsToRun1 = runOrderCalculator.orderTestClasses( testsToRun );
+        String names1 = join(asNamesList(testsToRun1));
+
+        TestsToRun testsToRun2 = runOrderCalculator.orderTestClasses( testsToRun );
+        String names2 = join(asNamesList(testsToRun2));
+
+        int times = 1000000;
+        while (names1.equals(names2) && times > 0) {
+            testsToRun2 = runOrderCalculator.orderTestClasses( testsToRun );
+            names2 = join(asNamesList(testsToRun2));
+            times--;
+        }
+        assertTrue(times > 0);
+    }
+
+    private static String join(List<String> names) {
+        StringBuilder stringBuilder = new StringBuilder();
+        Iterator<String> iter = names.iterator();
+        if (iter.hasNext()) {
+            stringBuilder.append(iter.next());
+        }
+        while (iter.hasNext()) {
+            stringBuilder.append("-").append(iter.next());
+        }
+        return stringBuilder.toString();
+    }
+
+    private static List<String> asNamesList(TestsToRun testsToRun) {
+        List<String> names1 =  new ArrayList<String>();
+        for (Class<?> cls : testsToRun) {
+            names1.add(cls.getSimpleName());
+        }
+        return names1;
+    }
+
+    private RunOrderParameters randomizedWith( String seed )
+    {
+        Randomizer randomizer = new Randomizer( seed );
+        return new RunOrderParameters( new RunOrder[]{ RunOrder.RANDOM }, randomizer, null );
+    }
+
+    private RunOrderParameters randomized()
+    {
+        return new RunOrderParameters( new RunOrder[]{ RunOrder.RANDOM }, new Randomizer(), null );
     }
 
     private Set<Class<?>> getClassesToRun()

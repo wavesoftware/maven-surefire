@@ -34,6 +34,8 @@ import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
 import org.apache.maven.plugin.surefire.report.TestcycleConsoleOutputReceiver;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
 import org.apache.maven.plugin.surefire.runorder.StatisticsReporter;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.RunOrder;
 
 import javax.annotation.Nonnull;
 
@@ -49,7 +51,11 @@ public class StartupReportConfiguration
 
     public static final String PLAIN_REPORT_FORMAT = ConsoleReporter.PLAIN;
 
-    private final PrintStream originalSystemOut;
+    public static final String DEFAULT_PLUGIN_NAME = "surefire";
+    /**
+     * VisibilityForTesting
+     */
+    protected PrintStream originalSystemOut;
 
     private final PrintStream originalSystemErr;
 
@@ -77,6 +83,10 @@ public class StartupReportConfiguration
 
     private String xsdSchemaLocation;
 
+    private final String pluginName;
+
+    private final RunOrderParameters runOrderParameters;
+
     private final Properties testVmSystemProperties = new Properties();
 
     private final Map<String, Map<String, List<WrappedReportEntry>>> testClassMethodRunHistory
@@ -87,7 +97,8 @@ public class StartupReportConfiguration
                                        boolean redirectTestOutputToFile, boolean disableXmlReport,
                                        @Nonnull File reportsDirectory, boolean trimStackTrace, String reportNameSuffix,
                                        String configurationHash, boolean requiresRunHistory,
-                                       int rerunFailingTestsCount, String xsdSchemaLocation )
+                                       int rerunFailingTestsCount, String xsdSchemaLocation,
+                                       String pluginName, RunOrderParameters runOrderParameters )
     {
         this.useFile = useFile;
         this.printSummary = printSummary;
@@ -103,6 +114,8 @@ public class StartupReportConfiguration
         this.originalSystemErr = System.err;
         this.rerunFailingTestsCount = rerunFailingTestsCount;
         this.xsdSchemaLocation = xsdSchemaLocation;
+        this.pluginName = pluginName;
+        this.runOrderParameters = runOrderParameters;
     }
 
     /**
@@ -110,9 +123,10 @@ public class StartupReportConfiguration
      */
     public static StartupReportConfiguration defaultValue()
     {
+        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
         File target = new File( "./target" );
         return new StartupReportConfiguration( true, true, "PLAIN", false, false, target, false, null, "TESTHASH",
-                                               false, 0, null );
+                                               false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );
     }
 
     /**
@@ -120,9 +134,10 @@ public class StartupReportConfiguration
      */
     public static StartupReportConfiguration defaultNoXml()
     {
+        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
         File target = new File( "./target" );
         return new StartupReportConfiguration( true, true, "PLAIN", false, true, target, false, null, "TESTHASHxXML",
-                                               false, 0, null );
+                                               false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );
     }
 
     public boolean isUseFile()
@@ -241,5 +256,15 @@ public class StartupReportConfiguration
     public String getXsdSchemaLocation()
     {
         return xsdSchemaLocation;
+    }
+
+    public String getPluginName()
+    {
+        return pluginName;
+    }
+
+    public RunOrderParameters getRunOrderParameters()
+    {
+        return runOrderParameters;
     }
 }

@@ -37,6 +37,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.shared.utils.ReaderFactory;
 import org.apache.maven.shared.utils.StringUtils;
 import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.util.Randomizer;
 
 /**
  * Run integration tests using Surefire.
@@ -262,6 +263,10 @@ public class IntegrationTestMojo
      * "filesystem".
      * <br/>
      * <br/>
+     * When using "random" mode, actual seed used to randomize execution order will be printed on console
+     * and in reports. It can be used later with <code>randomSeed</code> to reproduce erroneous run order.
+     * <br/>
+     * <br/>
      * Odd/Even for hourly is determined at the time the of scanning the classpath, meaning it could change during a
      * multi-module build.
      * <br/>
@@ -282,6 +287,22 @@ public class IntegrationTestMojo
      */
     @Parameter( property = "failsafe.runOrder", defaultValue = "filesystem" )
     private String runOrder;
+
+    /**
+     * When using a random order with <code>runOrder</code> parameter it is useful to be able to pass a seed.
+     * <br/>
+     * <br/>
+     * This is because, when tests fails to execution order binding, one can use the seed printed in
+     * reports to execute tests with exact same order as they where when they failed. This effectively reproduce
+     * the error. To reproduce a given seed most useful is to use command line option:
+     * <br/>
+     * <br/>
+     * <code>-Dfailsafe.randomSeed=325119</code>
+     *
+     * @since 2.19.2
+     */
+    @Parameter( property = "failsafe.randomSeed", defaultValue = Randomizer.DEFAULT_SEED )
+    private String randomSeed;
 
     /**
      * A file containing include patterns. Blank lines, or lines starting with # are ignored. If {@code includes} are
@@ -671,6 +692,12 @@ public class IntegrationTestMojo
     public void setRunOrder( String runOrder )
     {
         this.runOrder = runOrder;
+    }
+
+    @Override
+    public String getRandomSeed()
+    {
+        return randomSeed;
     }
 
     @Override

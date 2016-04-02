@@ -27,6 +27,7 @@ import org.apache.maven.surefire.report.RunListener;
 import org.apache.maven.surefire.report.RunStatistics;
 import org.apache.maven.surefire.report.StackTraceWriter;
 import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.util.Randomizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -105,6 +106,7 @@ public class DefaultReporterFactory
     {
         mergeTestHistoryResult();
         runCompleted();
+        displayRandomization();
         for ( TestSetRunListener listener : listeners )
         {
             listener.close();
@@ -124,6 +126,31 @@ public class DefaultReporterFactory
         consoleReporter.info( "-------------------------------------------------------" );
         consoleReporter.info( " T E S T S" );
         consoleReporter.info( "-------------------------------------------------------" );
+
+        displayRandomization();
+    }
+
+    private boolean isRandomized()
+    {
+        return reportConfiguration.getRunOrderParameters() != null
+                && reportConfiguration.getRunOrderParameters().isRandomized();
+    }
+
+    private void displayRandomization()
+    {
+        if ( isRandomized() )
+        {
+            final Randomizer randomizer = reportConfiguration.getRunOrderParameters().getRandomizer();
+            final DefaultDirectConsoleReporter logger = createConsoleLogger();
+            final String pluginName = reportConfiguration.getPluginName();
+
+            logger.info( "" );
+            logger.info( String.format(
+                    "Tests are randomly ordered. Re-run the same execution order with -D%s.randomSeed=%d",
+                    pluginName, randomizer.getSeed()
+            ) );
+            logger.info( "" );
+        }
     }
 
     private void runCompleted()

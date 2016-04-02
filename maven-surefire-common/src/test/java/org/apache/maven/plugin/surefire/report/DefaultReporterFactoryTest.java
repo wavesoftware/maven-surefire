@@ -20,17 +20,22 @@ package org.apache.maven.plugin.surefire.report;
  */
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
-
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
 import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
 import org.apache.maven.surefire.report.RunStatistics;
 import org.apache.maven.surefire.report.SafeThrowable;
 import org.apache.maven.surefire.report.StackTraceWriter;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.RunOrder;
+
+import javax.annotation.Nonnull;
 
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.error;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.failure;
@@ -39,6 +44,7 @@ import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.Tes
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.success;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.unknown;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class DefaultReporterFactoryTest
@@ -61,8 +67,9 @@ public class DefaultReporterFactoryTest
 
     public void testMergeTestHistoryResult()
     {
+        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
         StartupReportConfiguration reportConfig = new StartupReportConfiguration( true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",
-                                                                                                 false, 1, null );
+                false, 1, null, StartupReportConfiguration.DEFAULT_PLUGIN_NAME, runOrderParameters );
 
         DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig );
 
@@ -133,6 +140,32 @@ public class DefaultReporterFactoryTest
         factory.printTestFailures( reporter, DefaultReporterFactory.TestResultType.failure );
         String[] expectedErrorOutput = { };
         assertEquals( Arrays.asList( expectedErrorOutput ), reporter.getMessages() );
+    }
+
+    public void testRandomOrderMessages()
+    {
+        // given
+        String seed = "765432";
+        Randomizer randomizer = new Randomizer( seed );
+        RunOrder[] orders = new RunOrder[] { RunOrder.RANDOM };
+        RunOrderParameters runOrderParameters = new RunOrderParameters( orders, randomizer, null );
+        String pluginName = StartupReportConfiguration.DEFAULT_PLUGIN_NAME;
+        MockedStartupReportConfiguration reportConfig = new MockedStartupReportConfiguration(
+                true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",
+                false, 1, null, pluginName, runOrderParameters );
+        PrintStream stdOut = mock( PrintStream.class );
+        reportConfig.setSystemOut( stdOut );
+
+        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig );
+        String expectedMessage = String.format( "Tests are randomly ordered. Re-run the same execution " +
+                "order with -D%s.randomSeed=%s", pluginName, seed );
+
+        // when
+        factory.runStarting();
+
+        // then
+        verify( stdOut ).println( " T E S T S" );
+        verify( stdOut ).println( expectedMessage );
     }
 
     static class DummyTestReporter
@@ -228,5 +261,26 @@ public class DefaultReporterFactoryTest
         {
             return null;
         }
+    }
+
+    private static final class MockedStartupReportConfiguration extends StartupReportConfiguration {
+
+        public MockedStartupReportConfiguration( boolean useFile, boolean printSummary, String reportFormat,
+                                                 boolean redirectTestOutputToFile, boolean disableXmlReport,
+                                                 @Nonnull File reportsDirectory, boolean trimStackTrace,
+                                                 String reportNameSuffix, String configurationHash,
+                                                 boolean requiresRunHistory, int rerunFailingTestsCount,
+                                                 String xsdSchemaLocation, String pluginName,
+                                                 RunOrderParameters runOrderParameters )
+        {
+            super( useFile, printSummary, reportFormat, redirectTestOutputToFile, disableXmlReport,
+                    reportsDirectory, trimStackTrace, reportNameSuffix, configurationHash, requiresRunHistory,
+                    rerunFailingTestsCount, xsdSchemaLocation, pluginName, runOrderParameters );
+        }
+
+         protected void setSystemOut( PrintStream systemOut )
+         {
+             originalSystemOut = systemOut;
+         }
     }
 }

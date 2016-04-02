@@ -21,7 +21,10 @@ package org.apache.maven.plugin.surefire;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
+
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
+import org.apache.maven.surefire.booter.SurefireReflector;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.ReflectionUtils;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
@@ -32,17 +35,24 @@ import javax.annotation.Nonnull;
  */
 public class CommonReflector
 {
-    private final Class<?> startupReportConfiguration;
-
     private final ClassLoader surefireClassLoader;
+
+    private final Class<?> startupReportConfigurationClass;
+
+    private final Class<?> runOrderParametersClass;
+
+    private final SurefireReflector surefireReflector;
 
     public CommonReflector( @Nonnull ClassLoader surefireClassLoader )
     {
         this.surefireClassLoader = surefireClassLoader;
+        this.surefireReflector = new SurefireReflector( surefireClassLoader );
 
         try
         {
-            startupReportConfiguration = surefireClassLoader.loadClass( StartupReportConfiguration.class.getName() );
+            runOrderParametersClass = surefireClassLoader.loadClass( RunOrderParameters.class.getName() );
+            startupReportConfigurationClass = surefireClassLoader
+                    .loadClass( StartupReportConfiguration.class.getName() );
         }
         catch ( ClassNotFoundException e )
         {
@@ -52,7 +62,7 @@ public class CommonReflector
 
     public Object createReportingReporterFactory( @Nonnull StartupReportConfiguration startupReportConfiguration )
     {
-        Class<?>[] args = new Class[]{ this.startupReportConfiguration };
+        Class<?>[] args = new Class[]{ this.startupReportConfigurationClass };
         Object src = createStartupReportConfiguration( startupReportConfiguration );
         Object[] params = new Object[]{ src };
         return ReflectionUtils.instantiateObject( DefaultReporterFactory.class.getName(), args, params,
@@ -61,19 +71,27 @@ public class CommonReflector
 
     private Object createStartupReportConfiguration( @Nonnull StartupReportConfiguration reporterConfiguration )
     {
-        Constructor<?> constructor = ReflectionUtils.getConstructor( startupReportConfiguration,
+        Constructor<?> constructor = ReflectionUtils.getConstructor( startupReportConfigurationClass,
                                                                      boolean.class, boolean.class,
                                                                      String.class, boolean.class, boolean.class,
                                                                      File.class, boolean.class, String.class,
                                                                      String.class, boolean.class, int.class,
-                                                                     String.class );
+                                                                     String.class, String.class,
+                                                                     runOrderParametersClass
+                );
+        Object runOrderParameters = surefireReflector.createRunOrderParameters(
+                reporterConfiguration.getRunOrderParameters()
+        );
+
         //noinspection BooleanConstructorCall
         Object[] params = { reporterConfiguration.isUseFile(), reporterConfiguration.isPrintSummary(),
             reporterConfiguration.getReportFormat(), reporterConfiguration.isRedirectTestOutputToFile(),
             reporterConfiguration.isDisableXmlReport(), reporterConfiguration.getReportsDirectory(),
             reporterConfiguration.isTrimStackTrace(), reporterConfiguration.getReportNameSuffix(),
             reporterConfiguration.getConfigurationHash(), reporterConfiguration.isRequiresRunHistory(),
-            reporterConfiguration.getRerunFailingTestsCount(), reporterConfiguration.getXsdSchemaLocation() };
+            reporterConfiguration.getRerunFailingTestsCount(), reporterConfiguration.getXsdSchemaLocation(),
+            reporterConfiguration.getPluginName(), runOrderParameters
+        };
         return ReflectionUtils.newInstance( constructor, params );
     }
 

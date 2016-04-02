@@ -36,6 +36,14 @@ public class RunOrderTest
         assertEquals( RunOrder.BALANCED, hourlies[1] );
     }
 
+    public void testRandom()
+    {
+        final RunOrder[] randoms = RunOrder.valueOfMulti( "random" );
+        assertEquals( 1, randoms.length );
+        RunOrder random = randoms[0];
+        assertEquals( RunOrder.RANDOM, random );
+    }
+
     public void testAsString()
     {
         RunOrder[] orders = new RunOrder[]{ RunOrder.FAILEDFIRST, RunOrder.ALPHABETICAL };

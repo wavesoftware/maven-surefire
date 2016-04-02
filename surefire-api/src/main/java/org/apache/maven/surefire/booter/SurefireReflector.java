@@ -39,18 +39,21 @@ import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestArtifactInfo;
 import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.ReflectionUtils;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
-import static java.util.Collections.checkedList;
+import javax.annotation.Nullable;
 
+import static java.util.Collections.checkedList;
 import static org.apache.maven.surefire.util.ReflectionUtils.getConstructor;
 import static org.apache.maven.surefire.util.ReflectionUtils.getMethod;
+import static org.apache.maven.surefire.util.ReflectionUtils.instantiateOneArg;
+import static org.apache.maven.surefire.util.ReflectionUtils.instantiateTwoArgs;
 import static org.apache.maven.surefire.util.ReflectionUtils.invokeGetter;
 import static org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray;
-import static org.apache.maven.surefire.util.ReflectionUtils.instantiateOneArg;
 import static org.apache.maven.surefire.util.ReflectionUtils.invokeSetter;
-import static org.apache.maven.surefire.util.ReflectionUtils.instantiateTwoArgs;
 import static org.apache.maven.surefire.util.ReflectionUtils.newInstance;
 
 /**
@@ -102,6 +105,8 @@ public class SurefireReflector
 
     private final Class<Enum> shutdownClass;
 
+    private final Class<?> randomizerClass;
+
 
     @SuppressWarnings( "unchecked" )
     public SurefireReflector( ClassLoader surefireClassLoader )
@@ -129,6 +134,7 @@ public class SurefireReflector
             commandLineOptionsClass = (Class<Enum>) surefireClassLoader.loadClass( CommandLineOption.class.getName() );
             shutdownAwareClass = surefireClassLoader.loadClass( ShutdownAware.class.getName() );
             shutdownClass = (Class<Enum>) surefireClassLoader.loadClass( Shutdown.class.getName() );
+            randomizerClass = surefireClassLoader.loadClass( Randomizer.class.getName() );
         }
         catch ( ClassNotFoundException e )
         {
@@ -226,18 +232,34 @@ public class SurefireReflector
     }
 
 
-    Object createRunOrderParameters( RunOrderParameters runOrderParameters )
+    public Object createRunOrderParameters( @Nullable RunOrderParameters runOrderParameters )
     {
         if ( runOrderParameters == null )
         {
             return null;
         }
         //Can't use the constructor with the RunOrder parameter. Using it causes some integration tests to fail.
-        Class<?>[] arguments = { String.class, String.class };
+        Class<?>[] arguments = { String.class, randomizerClass, File.class };
         Constructor constructor = getConstructor( this.runOrderParameters, arguments );
         File runStatisticsFile = runOrderParameters.getRunStatisticsFile();
-        return newInstance( constructor, RunOrder.asString( runOrderParameters.getRunOrder() ),
-                            runStatisticsFile == null ? null : runStatisticsFile.getAbsolutePath() );
+        Object randomizer = createRandomizer( runOrderParameters.getRandomizer() );
+        return newInstance( constructor, RunOrder.asString( runOrderParameters.getRunOrder() ), randomizer,
+                            runStatisticsFile );
+    }
+
+    private Object createRandomizer( @Nullable Randomizer randomizer )
+    {
+        if ( randomizer == null )
+        {
+            return null;
+        }
+        Constructor<?> constructor = ReflectionUtils.getConstructor( randomizerClass,
+                String.class, long.class
+        );
+        Object[] params = {
+                randomizer.getGivenSeed(), randomizer.getSeed()
+        };
+        return ReflectionUtils.newInstance( constructor, params );
     }
 
     Object createTestArtifactInfo( TestArtifactInfo testArtifactInfo )

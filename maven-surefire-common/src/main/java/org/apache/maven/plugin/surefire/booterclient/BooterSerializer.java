@@ -37,7 +37,9 @@ import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestArtifactInfo;
 import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
+import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.internal.RandomizerSerializer;
 
 // CHECKSTYLE_OFF: imports
 import static org.apache.maven.surefire.booter.BooterConstants.*;
@@ -118,6 +120,11 @@ class BooterSerializer
         if ( runOrderParameters != null )
         {
             properties.setProperty( RUN_ORDER, RunOrder.asString( runOrderParameters.getRunOrder() ) );
+            Randomizer randomizer = runOrderParameters.getRandomizer();
+            String seed = randomizer != null
+                    ? RandomizerSerializer.serialize( randomizer )
+                    : Randomizer.DEFAULT_SEED;
+            properties.setProperty( RANDOM_SEED, seed );
             properties.setProperty( RUN_STATISTICS_FILE, runOrderParameters.getRunStatisticsFile() );
         }
 
