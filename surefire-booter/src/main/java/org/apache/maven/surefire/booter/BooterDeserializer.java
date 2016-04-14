@@ -24,16 +24,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.maven.surefire.report.ReporterConfiguration;
 import org.apache.maven.surefire.testset.DirectoryScannerParameters;
 import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestArtifactInfo;
 import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.internal.RandomizerSerializer;
 
 // CHECKSTYLE_OFF: imports
 import static org.apache.maven.surefire.booter.BooterConstants.*;
-import static org.apache.maven.surefire.cli.CommandLineOption.*;
+import static org.apache.maven.surefire.cli.CommandLineOption.fromStrings;
 
 /**
  * Knows how to serialize and deserialize the booter configuration.
@@ -78,6 +81,7 @@ public class BooterDeserializer
         final List<String> testSuiteXmlFiles = properties.getStringList( TEST_SUITE_XML_FILES );
         final File testClassesDirectory = properties.getFileProperty( TEST_CLASSES_DIRECTORY );
         final String runOrder = properties.getProperty( RUN_ORDER );
+        final String randomSeed = properties.getProperty( RANDOM_SEED );
         final String runStatisticsFile = properties.getProperty( RUN_STATISTICS_FILE );
 
         final int rerunFailingTestsCount = properties.getIntProperty( RERUN_FAILING_TESTS_COUNT );
@@ -86,7 +90,9 @@ public class BooterDeserializer
             new DirectoryScannerParameters( testClassesDirectory, includes, excludes, specificTests,
                                             properties.getBooleanProperty( FAILIFNOTESTS ), runOrder );
 
-        RunOrderParameters runOrderParameters = new RunOrderParameters( runOrder, runStatisticsFile );
+
+        Randomizer randomizer = RandomizerSerializer.deserialize( randomSeed );
+        RunOrderParameters runOrderParameters = new RunOrderParameters( runOrder, randomizer, runStatisticsFile );
 
         TestArtifactInfo testNg = new TestArtifactInfo( testNgVersion, testArtifactClassifier );
         TestRequest testSuiteDefinition =

@@ -19,15 +19,15 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
-import org.apache.maven.plugin.surefire.runorder.RunEntryStatisticsMap;
-import org.apache.maven.surefire.testset.RunOrderParameters;
-
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+
+import org.apache.maven.plugin.surefire.runorder.RunEntryStatisticsMap;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 
 /**
  * Applies the final runorder of the tests
@@ -37,6 +37,8 @@ import java.util.List;
 public class DefaultRunOrderCalculator
     implements RunOrderCalculator
 {
+    private static final int INITIAL_CAPACITY = 512;
+
     private final Comparator<Class> sortOrder;
 
     private final RunOrder[] runOrder;
@@ -53,10 +55,9 @@ public class DefaultRunOrderCalculator
         this.sortOrder = this.runOrder.length > 0 ? getSortOrderComparator( this.runOrder[0] ) : null;
     }
 
-    @SuppressWarnings( "checkstyle:magicnumber" )
     public TestsToRun orderTestClasses( TestsToRun scannedClasses )
     {
-        List<Class<?>> result = new ArrayList<Class<?>>( 512 );
+        List<Class<?>> result = new ArrayList<Class<?>>( INITIAL_CAPACITY );
 
         for ( Class<?> scannedClass : scannedClasses )
         {
@@ -71,7 +72,7 @@ public class DefaultRunOrderCalculator
     {
         if ( RunOrder.RANDOM.equals( runOrder ) )
         {
-            Collections.shuffle( testClasses );
+            Collections.shuffle( testClasses, runOrderParameters.getRandomizer().getRandom() );
         }
         else if ( RunOrder.FAILEDFIRST.equals( runOrder ) )
         {

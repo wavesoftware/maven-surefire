@@ -91,6 +91,7 @@ import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.testset.TestSetFailedException;
 import org.apache.maven.surefire.util.DefaultScanResult;
+import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.toolchain.Toolchain;
 import org.apache.maven.toolchain.ToolchainManager;
@@ -713,6 +714,8 @@ public abstract class AbstractSurefireMojo
 
     public abstract void setRunOrder( String runOrder );
 
+    public abstract String getRandomSeed();
+
     protected abstract void handleSummary( RunResult summary, Exception firstForkException )
         throws MojoExecutionException, MojoFailureException;
 
@@ -1002,8 +1005,13 @@ public abstract class AbstractSurefireMojo
         SurefireProperties effectiveProperties = setupProperties();
         ClassLoaderConfiguration classLoaderConfiguration = getClassLoaderConfiguration();
         provider.addProviderProperties();
+        Randomizer randomizer = new Randomizer( getRandomSeed() );
         RunOrderParameters runOrderParameters =
-            new RunOrderParameters( getRunOrder(), getStatisticsFileName( getConfigChecksum() ) );
+            new RunOrderParameters(
+                    getRunOrder(),
+                    randomizer,
+                    getStatisticsFileName( getConfigChecksum() )
+            );
 
         if ( isNotForking() )
         {
@@ -1596,13 +1604,15 @@ public abstract class AbstractSurefireMojo
         return getPluginArtifactMap().get( "org.apache.maven.surefire:surefire-api" );
     }
 
-    private StartupReportConfiguration getStartupReportConfiguration( String configChecksum )
+    private StartupReportConfiguration getStartupReportConfiguration( String configChecksum,
+                                                                      RunOrderParameters runOrderParameters )
     {
         return new StartupReportConfiguration( isUseFile(), isPrintSummary(), getReportFormat(),
                                                isRedirectTestOutputToFile(), isDisableXmlReport(),
                                                getReportsDirectory(), isTrimStackTrace(), getReportNameSuffix(),
                                                configChecksum, requiresRunHistory(), getRerunFailingTestsCount(),
-                                               getReportSchemaLocation() );
+                                               getReportSchemaLocation(), getPluginName(), runOrderParameters
+                );
     }
 
     private boolean isSpecificTestSpecified()
@@ -1835,7 +1845,9 @@ public abstract class AbstractSurefireMojo
     {
         StartupConfiguration startupConfiguration = createStartupConfiguration( provider, classLoaderConfiguration );
         String configChecksum = getConfigChecksum();
-        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration( configChecksum );
+        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration(
+                configChecksum, runOrderParameters
+        );
         ProviderConfiguration providerConfiguration = createProviderConfiguration( runOrderParameters );
         return new ForkStarter( providerConfiguration, startupConfiguration, forkConfiguration,
                                 getForkedProcessTimeoutInSeconds(), startupReportConfiguration, log );
@@ -1848,7 +1860,9 @@ public abstract class AbstractSurefireMojo
     {
         StartupConfiguration startupConfiguration = createStartupConfiguration( provider, classLoaderConfiguration );
         String configChecksum = getConfigChecksum();
-        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration( configChecksum );
+        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration(
+                configChecksum, runOrderParameters
+        );
         ProviderConfiguration providerConfiguration = createProviderConfiguration( runOrderParameters );
         return new InPluginVMSurefireStarter( startupConfiguration, providerConfiguration, startupReportConfiguration );
 
@@ -2055,6 +2069,7 @@ public abstract class AbstractSurefireMojo
         checksum.add( getObjectFactory() );
         checksum.add( getFailIfNoTests() );
         checksum.add( getRunOrder() );
+        checksum.add( getRandomSeed() );
         checksum.add( getDependenciesToScan() );
         addPluginSpecificChecksumItems( checksum );
         return checksum.getSha1();
