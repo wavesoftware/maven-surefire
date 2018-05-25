@@ -19,12 +19,6 @@ package org.apache.maven.plugin.surefire.report;
  * under the License.
  */
 
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import junit.framework.TestCase;
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
 import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
@@ -34,8 +28,14 @@ import org.apache.maven.surefire.report.StackTraceWriter;
 import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.error;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.failure;
@@ -67,7 +67,11 @@ public class DefaultReporterFactoryTest
 
     public void testMergeTestHistoryResult()
     {
-        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.DEFAULT ),
+                null,
+                null
+        );
         StartupReportConfiguration reportConfig = new StartupReportConfiguration( true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",
                 false, 1, null, StartupReportConfiguration.DEFAULT_PLUGIN_NAME, runOrderParameters );
 
@@ -147,8 +151,11 @@ public class DefaultReporterFactoryTest
         // given
         String seed = "765432";
         Randomizer randomizer = new Randomizer( seed );
-        RunOrder[] orders = new RunOrder[] { RunOrder.RANDOM };
-        RunOrderParameters runOrderParameters = new RunOrderParameters( orders, randomizer, null );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.RANDOM ),
+                randomizer,
+                null
+        );
         String pluginName = StartupReportConfiguration.DEFAULT_PLUGIN_NAME;
         MockedStartupReportConfiguration reportConfig = new MockedStartupReportConfiguration(
                 true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",

@@ -19,13 +19,6 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.io.PrintStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.maven.plugin.surefire.report.ConsoleOutputFileReporter;
 import org.apache.maven.plugin.surefire.report.ConsoleReporter;
 import org.apache.maven.plugin.surefire.report.DirectConsoleOutput;
@@ -36,8 +29,15 @@ import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
 import org.apache.maven.plugin.surefire.runorder.StatisticsReporter;
 import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * All the parameters used to construct reporters
@@ -123,7 +123,11 @@ public class StartupReportConfiguration
      */
     public static StartupReportConfiguration defaultValue()
     {
-        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.DEFAULT ),
+                null,
+                null
+        );
         File target = new File( "./target" );
         return new StartupReportConfiguration( true, true, "PLAIN", false, false, target, false, null, "TESTHASH",
                                                false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );
@@ -134,7 +138,11 @@ public class StartupReportConfiguration
      */
     public static StartupReportConfiguration defaultNoXml()
     {
-        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, null, null );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.DEFAULT ),
+                null,
+                null
+        );
         File target = new File( "./target" );
         return new StartupReportConfiguration( true, true, "PLAIN", false, true, target, false, null, "TESTHASHxXML",
                                                false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );

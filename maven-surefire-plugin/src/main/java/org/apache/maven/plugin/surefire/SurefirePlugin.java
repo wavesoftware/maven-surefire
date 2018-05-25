@@ -19,11 +19,6 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -31,7 +26,11 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.surefire.suite.RunResult;
-import org.apache.maven.surefire.util.Randomizer;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Run tests using Surefire.
@@ -242,7 +241,10 @@ public class SurefirePlugin
      * <br/>
      * <br/>
      * When using "random" mode, actual seed used to randomize execution order will be printed on console
-     * and in reports. It can be used later with <code>randomSeed</code> to reproduce erroneous run order.
+     * and in reports. It can be used later to reproduce erroneous run order. To reproduce a given seed most useful is to use command line option:
+     * <br/>
+     * <br/>
+     * <code>-Dsurefire.runOrder=random:325119</code>
      * <br/>
      * <br/>
      * Odd/Even for hourly is determined at the time the of scanning the classpath, meaning it could change during a
@@ -265,22 +267,6 @@ public class SurefirePlugin
      */
     @Parameter( property = "surefire.runOrder", defaultValue = "filesystem" )
     private String runOrder;
-
-    /**
-     * When using a random order with <code>runOrder</code> parameter it is useful to be able to pass a seed.
-     * <br/>
-     * <br/>
-     * This is because, when tests fails to execution order binding, one can use the seed printed in
-     * reports to execute tests with exact same order as they where when they failed. This effectively reproduce
-     * the error. To reproduce a given seed most useful is to use command line option:
-     * <br/>
-     * <br/>
-     * <code>-Dsurefire.randomSeed=325119</code>
-     *
-     * @since 2.19.2
-     */
-    @Parameter( property = "surefire.randomSeed", defaultValue = Randomizer.DEFAULT_SEED )
-    private String randomSeed;
 
     /**
      * A file containing include patterns. Blank lines, or lines starting with # are ignored. If {@code includes} are
@@ -612,12 +598,6 @@ public class SurefirePlugin
     public void setRunOrder( String runOrder )
     {
         this.runOrder = runOrder;
-    }
-
-    @Override
-    public String getRandomSeed()
-    {
-        return randomSeed;
     }
 
     @Override

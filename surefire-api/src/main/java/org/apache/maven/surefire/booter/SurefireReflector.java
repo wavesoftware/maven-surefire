@@ -19,16 +19,6 @@ package org.apache.maven.surefire.booter;
  * under the License.
  */
 
-import java.io.File;
-import java.io.PrintStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.maven.surefire.cli.CommandLineOption;
 import org.apache.maven.surefire.providerapi.ProviderParameters;
 import org.apache.maven.surefire.report.ReporterConfiguration;
@@ -41,10 +31,19 @@ import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.ReflectionUtils;
-import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrderMapper;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.checkedList;
 import static org.apache.maven.surefire.util.ReflectionUtils.getConstructor;
@@ -106,6 +105,8 @@ public class SurefireReflector
     private final Class<Enum> shutdownClass;
 
     private final Class<?> randomizerClass;
+
+    private final RunOrderMapper runOrderMapper = new RunOrderMapper();
 
 
     @SuppressWarnings( "unchecked" )
@@ -228,7 +229,7 @@ public class SurefireReflector
                             directoryScannerParameters.getExcludes(),
                             directoryScannerParameters.getSpecificTests(),
                             directoryScannerParameters.isFailIfNoTests(),
-                            RunOrder.asString( directoryScannerParameters.getRunOrder() ) );
+                            directoryScannerParameters.getRunOrders() );
     }
 
 
@@ -243,8 +244,12 @@ public class SurefireReflector
         Constructor constructor = getConstructor( this.runOrderParameters, arguments );
         File runStatisticsFile = runOrderParameters.getRunStatisticsFile();
         Object randomizer = createRandomizer( runOrderParameters.getRandomizer() );
-        return newInstance( constructor, RunOrder.asString( runOrderParameters.getRunOrder() ), randomizer,
-                            runStatisticsFile );
+        return newInstance(
+                constructor,
+                runOrderParameters.getRunOrders(),
+                randomizer,
+                runStatisticsFile
+        );
     }
 
     private Object createRandomizer( @Nullable Randomizer randomizer )

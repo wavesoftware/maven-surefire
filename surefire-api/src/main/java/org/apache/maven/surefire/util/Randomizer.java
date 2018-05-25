@@ -19,13 +19,12 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
-import java.util.Random;
-import java.util.zip.CRC32;
-
 import org.apache.maven.surefire.util.internal.UniqIdGenerator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Random;
+import java.util.zip.CRC32;
 
 /**
  * An object that holds an random seed and random order
@@ -36,10 +35,10 @@ import javax.annotation.Nullable;
 public class Randomizer
 {
     public static final String DEFAULT_SEED = "";
-    public static final int DECIMAL_RADIX = 10;
-    public static final int UPPER_BOUND = 1000000;
-    public static final int LOWER_BOUND = 100000;
-    public static final UniqIdGenerator UNIQ_ID_GENERATOR = new UniqIdGenerator(
+    private static final int DECIMAL_RADIX = 10;
+    private static final int UPPER_BOUND = 1000000;
+    private static final int LOWER_BOUND = 100000;
+    private static final UniqIdGenerator UNIQ_ID_GENERATOR = new UniqIdGenerator(
             LOWER_BOUND, UPPER_BOUND
     );
     private final String givenSeed;

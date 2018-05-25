@@ -19,59 +19,47 @@ package org.apache.maven.surefire.testset;
  * under the License.
  */
 
-import java.io.File;
-
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.File;
 
 /**
  * @author Kristian Rosenvold
  */
 public class RunOrderParameters
 {
-    private final RunOrder[] runOrder;
+    private final RunOrders runOrders;
 
     private final File runStatisticsFile;
 
     private final Randomizer randomizer;
 
-    public RunOrderParameters( @Nonnull RunOrder[] runOrder, @Nullable Randomizer randomizer,
-                               @Nullable File runStatisticsFile )
+
+    public RunOrderParameters(@Nonnull RunOrders runOrders,
+                              @Nullable Randomizer randomizer,
+                              @Nullable File runStatisticsFile )
     {
-        this.runOrder = runOrder;
-        this.randomizer = ensureRandomizer( runOrder, randomizer );
+        this.runOrders = runOrders;
+        this.randomizer = ensureRandomizer( runOrders, randomizer );
         this.runStatisticsFile = runStatisticsFile;
-    }
-
-    public RunOrderParameters( @Nullable String runOrder, @Nullable Randomizer randomizer,
-                               @Nullable File runStatisticsFile )
-    {
-        this(
-                ensureRunOrder( runOrder ),
-                ensureRandomizer( ensureRunOrder( runOrder ), randomizer ),
-                runStatisticsFile
-        );
-    }
-
-    public RunOrderParameters( @Nullable String runOrder, @Nullable Randomizer randomizer,
-                               @Nullable String runStatisticsFile )
-    {
-        this(
-                runOrder, randomizer, ensureStatisticsFile( runStatisticsFile )
-        );
     }
 
     public static RunOrderParameters alphabetical()
     {
-        return new RunOrderParameters( new RunOrder[]{ RunOrder.ALPHABETICAL }, null, null );
+        return new RunOrderParameters(
+                new RunOrders( RunOrder.ALPHABETICAL ),
+                null,
+                null
+        );
     }
 
-    public RunOrder[] getRunOrder()
+    public RunOrders getRunOrders()
     {
-        return runOrder;
+        return runOrders;
     }
 
     public File getRunStatisticsFile()
@@ -86,46 +74,23 @@ public class RunOrderParameters
 
     public boolean isRandomized()
     {
-        return isRandomized( this.runOrder );
-    }
-
-    @Nonnull
-    private static RunOrder[] ensureRunOrder( @Nullable String runOrder )
-    {
-        return runOrder == null ? RunOrder.DEFAULT : RunOrder.valueOfMulti( runOrder );
+        return isRandomized( this.runOrders );
     }
 
     @Nullable
-    private static File ensureStatisticsFile( @Nullable String runStatisticsFile )
-    {
-        return runStatisticsFile != null ? new File( runStatisticsFile ) : null;
-    }
-
-    private static boolean isRandomized( RunOrder[] runOrders )
-    {
-        boolean randomized = false;
-        for ( RunOrder runOrder : runOrders )
-        {
-            if ( RunOrder.RANDOM.equals( runOrder ) )
-            {
-                randomized = true;
-                break;
-            }
-        }
-        return randomized;
-    }
-
-    @Nullable
-    private static Randomizer ensureRandomizer( @Nonnull RunOrder[] runOrders, @Nullable Randomizer randomizer )
+    private static Randomizer ensureRandomizer( @Nonnull RunOrders runOrders,
+                                                @Nullable Randomizer randomizer )
     {
         Randomizer result = randomizer;
-        if ( isRandomized( runOrders ) )
+        if ( isRandomized( runOrders ) && result == null )
         {
-            if ( result == null )
-            {
-                result = new Randomizer();
-            }
+            result = new Randomizer();
         }
         return result;
+    }
+
+    private static boolean isRandomized( @Nonnull RunOrders runOrders )
+    {
+        return runOrders.contains( RunOrder.RANDOM );
     }
 }

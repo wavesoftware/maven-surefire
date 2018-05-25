@@ -19,15 +19,16 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.io.IOException;
-
 import junit.framework.TestCase;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.shared.utils.io.FileUtils;
 import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
@@ -67,10 +68,11 @@ public class CommonReflectorTest extends TestCase
     {
         // given
         CommonReflector commonReflector = new CommonReflector( this.getClass().getClassLoader() );
-        RunOrder[] runOrder = new RunOrder[] { RunOrder.RANDOM };
         String seed = "123";
         Randomizer randomizer = new Randomizer( seed );
-        RunOrderParameters runOrderParameters = new RunOrderParameters( runOrder, randomizer, null );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.RANDOM ), randomizer, null
+        );
         StartupReportConfiguration startupReportConfiguration = new StartupReportConfiguration(
                 true, true, null, false, false, tempDir, false, null, null, false, 0, null, null,
                 runOrderParameters

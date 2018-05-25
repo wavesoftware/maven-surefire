@@ -18,14 +18,14 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
+import junit.framework.TestCase;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-
-import junit.framework.TestCase;
-import org.apache.maven.surefire.testset.RunOrderParameters;
 
 /**
  * @author Kristian Rosenvold
@@ -104,12 +104,20 @@ public class RunOrderCalculatorTest
     private RunOrderParameters randomizedWith( String seed )
     {
         Randomizer randomizer = new Randomizer( seed );
-        return new RunOrderParameters( new RunOrder[]{ RunOrder.RANDOM }, randomizer, null );
+        return new RunOrderParameters(
+                new RunOrders( RunOrder.RANDOM ),
+                randomizer,
+                null
+        );
     }
 
     private RunOrderParameters randomized()
     {
-        return new RunOrderParameters( new RunOrder[]{ RunOrder.RANDOM }, new Randomizer(), null );
+        return new RunOrderParameters(
+                new RunOrders( RunOrder.RANDOM ),
+                new Randomizer(),
+                null
+        );
     }
 
     private Set<Class<?>> getClassesToRun()

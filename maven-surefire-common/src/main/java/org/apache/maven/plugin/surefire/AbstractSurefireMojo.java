@@ -20,23 +20,6 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
@@ -62,6 +45,7 @@ import org.apache.maven.plugin.surefire.booterclient.ChecksumCalculator;
 import org.apache.maven.plugin.surefire.booterclient.ForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ForkStarter;
 import org.apache.maven.plugin.surefire.booterclient.ProviderDetector;
+import org.apache.maven.plugin.surefire.runorder.RunOrderProcessor;
 import org.apache.maven.plugin.surefire.util.DependencyScanner;
 import org.apache.maven.plugin.surefire.util.DirectoryScanner;
 import org.apache.maven.plugins.annotations.Component;
@@ -91,12 +75,28 @@ import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.testset.TestSetFailedException;
 import org.apache.maven.surefire.util.DefaultScanResult;
-import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 import org.apache.maven.toolchain.Toolchain;
 import org.apache.maven.toolchain.ToolchainManager;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Abstract base class for running tests using Surefire.
@@ -714,8 +714,6 @@ public abstract class AbstractSurefireMojo
 
     public abstract void setRunOrder( String runOrder );
 
-    public abstract String getRandomSeed();
-
     protected abstract void handleSummary( RunResult summary, Exception firstForkException )
         throws MojoExecutionException, MojoFailureException;
 
@@ -737,6 +735,8 @@ public abstract class AbstractSurefireMojo
     private TestListResolver includedExcludedTests;
 
     private List<CommandLineOption> cli;
+
+    private RunOrderProcessor runOrderProcessor = new RunOrderProcessor();
 
     public void execute()
         throws MojoExecutionException, MojoFailureException
@@ -1005,13 +1005,9 @@ public abstract class AbstractSurefireMojo
         SurefireProperties effectiveProperties = setupProperties();
         ClassLoaderConfiguration classLoaderConfiguration = getClassLoaderConfiguration();
         provider.addProviderProperties();
-        Randomizer randomizer = new Randomizer( getRandomSeed() );
-        RunOrderParameters runOrderParameters =
-            new RunOrderParameters(
-                    getRunOrder(),
-                    randomizer,
-                    getStatisticsFileName( getConfigChecksum() )
-            );
+        String statisticsFileName = getStatisticsFileName(getConfigChecksum());
+        RunOrderParameters runOrderParameters = runOrderProcessor
+                .createRunOrderParameters( getRunOrders(), statisticsFileName );
 
         if ( isNotForking() )
         {
@@ -1428,16 +1424,9 @@ public abstract class AbstractSurefireMojo
         return ForkConfiguration.getEffectiveForkMode( forkMode1 );
     }
 
-    private List<RunOrder> getRunOrders()
-    {
-        String runOrderString = getRunOrder();
-        RunOrder[] runOrder = runOrderString == null ? RunOrder.DEFAULT : RunOrder.valueOfMulti( runOrderString );
-        return Arrays.asList( runOrder );
-    }
-
     private boolean requiresRunHistory()
     {
-        final List<RunOrder> runOrders = getRunOrders();
+        final RunOrders runOrders = getRunOrders();
         return runOrders.contains( RunOrder.BALANCED ) || runOrders.contains( RunOrder.FAILEDFIRST );
     }
 
@@ -1510,9 +1499,15 @@ public abstract class AbstractSurefireMojo
             // Collections.emptyList(); behaves same
             List<String> specificTests = Collections.emptyList();
 
+            RunOrders runOrders = getRunOrders();
             directoryScannerParameters =
-                new DirectoryScannerParameters( getTestClassesDirectory(), actualIncludes, actualExcludes,
-                                                specificTests, actualFailIfNoTests, getRunOrder() );
+                new DirectoryScannerParameters( getTestClassesDirectory(),
+                        actualIncludes,
+                        actualExcludes,
+                        specificTests,
+                        actualFailIfNoTests,
+                        runOrders
+                );
         }
 
         Map<String, String> providerProperties = toStringProperties( getProperties() );
@@ -1592,6 +1587,10 @@ public abstract class AbstractSurefireMojo
         {
             throw new MojoExecutionException( "Unable to generate classpath: " + e, e );
         }
+    }
+
+    private RunOrders getRunOrders() {
+        return runOrderProcessor.readRunOrders( getRunOrder() );
     }
 
     private Artifact getCommonArtifact()
@@ -2069,7 +2068,6 @@ public abstract class AbstractSurefireMojo
         checksum.add( getObjectFactory() );
         checksum.add( getFailIfNoTests() );
         checksum.add( getRunOrder() );
-        checksum.add( getRandomSeed() );
         checksum.add( getDependenciesToScan() );
         addPluginSpecificChecksumItems( checksum );
         return checksum.getSha1();

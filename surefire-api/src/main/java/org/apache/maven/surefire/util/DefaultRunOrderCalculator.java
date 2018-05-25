@@ -19,15 +19,15 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.runorder.RunEntryStatisticsMap;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-
-import org.apache.maven.plugin.surefire.runorder.RunEntryStatisticsMap;
-import org.apache.maven.surefire.testset.RunOrderParameters;
 
 /**
  * Applies the final runorder of the tests
@@ -41,7 +41,7 @@ public class DefaultRunOrderCalculator
 
     private final Comparator<Class> sortOrder;
 
-    private final RunOrder[] runOrder;
+    private final RunOrders runOrders;
 
     private final RunOrderParameters runOrderParameters;
 
@@ -51,8 +51,8 @@ public class DefaultRunOrderCalculator
     {
         this.runOrderParameters = runOrderParameters;
         this.threadCount = threadCount;
-        this.runOrder = runOrderParameters.getRunOrder();
-        this.sortOrder = this.runOrder.length > 0 ? getSortOrderComparator( this.runOrder[0] ) : null;
+        this.runOrders = runOrderParameters.getRunOrders();
+        this.sortOrder = this.runOrders.any() ? getSortOrderComparator( this.runOrders ) : null;
     }
 
     public TestsToRun orderTestClasses( TestsToRun scannedClasses )
@@ -64,7 +64,10 @@ public class DefaultRunOrderCalculator
             result.add( scannedClass );
         }
 
-        orderTestClasses( result, runOrder.length != 0 ? runOrder[0] : null );
+        orderTestClasses(
+                result,
+                runOrders.any() ? runOrders.firstAsType() : null
+        );
         return new TestsToRun( new LinkedHashSet<Class<?>>( result ) );
     }
 
@@ -96,8 +99,9 @@ public class DefaultRunOrderCalculator
         }
     }
 
-    private Comparator<Class> getSortOrderComparator( RunOrder runOrder )
+    private Comparator<Class> getSortOrderComparator( RunOrders runOrders )
     {
+        RunOrder runOrder = runOrders.firstAsType();
         if ( RunOrder.ALPHABETICAL.equals( runOrder ) )
         {
             return getAlphabeticalComparator();

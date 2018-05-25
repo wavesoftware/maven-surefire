@@ -21,7 +21,6 @@ package org.apache.maven.surefire.util;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringTokenizer;
 
 /**
  * A RunOrder specifies the order in which the tests will be run.
@@ -46,24 +45,29 @@ public class RunOrder
 
     public static final RunOrder[] DEFAULT = new RunOrder[]{ FILESYSTEM };
 
+    private static final RunOrderMapper RUN_ORDER_MAPPER = new RunOrderMapper();
+
     /**
      * Returns the specified RunOrder
      *
      * @param values The runorder string value
      * @return An array of RunOrder objects, never null
+     * @deprecated Use {@link RunOrderMapper#fromString(String)} method
      */
+    @Deprecated
     public static RunOrder[] valueOfMulti( String values )
     {
         List<RunOrder> result = new ArrayList<RunOrder>();
         if ( values != null )
         {
-            StringTokenizer stringTokenizer = new StringTokenizer( values, "," );
-            while ( stringTokenizer.hasMoreTokens() )
+            Iterable<RunOrder> runOrders = RUN_ORDER_MAPPER
+                    .readWithoutArgumentsFromString( values );
+            for (RunOrder runOrder : runOrders)
             {
-                result.add( valueOf( stringTokenizer.nextToken() ) );
+                result.add( runOrder );
             }
         }
-        return result.toArray( new RunOrder[result.size()] );
+        return result.toArray(new RunOrder[0]);
     }
 
     public static RunOrder valueOf( String name )
@@ -111,19 +115,14 @@ public class RunOrder
         return new RunOrder[]{ ALPHABETICAL, FILESYSTEM, HOURLY, RANDOM, REVERSE_ALPHABETICAL, BALANCED, FAILEDFIRST };
     }
 
+    /**
+     * @deprecated Use {@link RunOrderMapper#asString(RunOrders)} method
+     */
+    @Deprecated
     public static String asString( RunOrder[] runOrder )
     {
-        StringBuilder stringBuffer = new StringBuilder();
-        for ( int i = 0; i < runOrder.length; i++ )
-        {
-            stringBuffer.append( runOrder[i].name );
-            if ( i < ( runOrder.length - 1 ) )
-            {
-                stringBuffer.append( "," );
-            }
-        }
-        return stringBuffer.toString();
-
+        RunOrders runOrders = new RunOrders( runOrder );
+        return RUN_ORDER_MAPPER.asString( runOrders );
     }
 
     private final String name;

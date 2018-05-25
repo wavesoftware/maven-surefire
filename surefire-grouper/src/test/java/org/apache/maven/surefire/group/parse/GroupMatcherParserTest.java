@@ -18,13 +18,14 @@ package org.apache.maven.surefire.group.parse;
  * under the License.
  */
 
+import junit.framework.TestCase;
 import org.apache.maven.surefire.group.match.AndGroupMatcher;
 import org.apache.maven.surefire.group.match.GroupMatcher;
 import org.apache.maven.surefire.group.match.InverseGroupMatcher;
 import org.apache.maven.surefire.group.match.OrGroupMatcher;
 import org.apache.maven.surefire.group.match.SingleGroupMatcher;
 
-import junit.framework.TestCase;
+import java.text.ParseException;
 
 public class GroupMatcherParserTest
     extends TestCase

@@ -19,10 +19,6 @@ package org.apache.maven.plugin.surefire.booterclient;
  * under the License.
  */
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
 import org.apache.maven.plugin.surefire.SurefireProperties;
 import org.apache.maven.surefire.booter.ClassLoaderConfiguration;
 import org.apache.maven.surefire.booter.ClasspathConfiguration;
@@ -38,11 +34,16 @@ import org.apache.maven.surefire.testset.TestArtifactInfo;
 import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.util.Randomizer;
-import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrderMapper;
 import org.apache.maven.surefire.util.internal.RandomizerSerializer;
 
-// CHECKSTYLE_OFF: imports
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
 import static org.apache.maven.surefire.booter.BooterConstants.*;
+
+// CHECKSTYLE_OFF: imports
 
 /**
  * Knows how to serialize and deserialize the booter configuration.
@@ -62,6 +63,7 @@ import static org.apache.maven.surefire.booter.BooterConstants.*;
 class BooterSerializer
 {
     private final ForkConfiguration forkConfiguration;
+    private final RunOrderMapper runOrderMapper = new RunOrderMapper();
 
     public BooterSerializer( ForkConfiguration forkConfiguration )
     {
@@ -119,7 +121,7 @@ class BooterSerializer
         final RunOrderParameters runOrderParameters = booterConfiguration.getRunOrderParameters();
         if ( runOrderParameters != null )
         {
-            properties.setProperty( RUN_ORDER, RunOrder.asString( runOrderParameters.getRunOrder() ) );
+            properties.setProperty( RUN_ORDER, runOrderMapper.asString( runOrderParameters.getRunOrders() ) );
             Randomizer randomizer = runOrderParameters.getRandomizer();
             String seed = randomizer != null
                     ? RandomizerSerializer.serialize( randomizer )
