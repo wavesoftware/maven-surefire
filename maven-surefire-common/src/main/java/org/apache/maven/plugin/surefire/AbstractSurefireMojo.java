@@ -2106,9 +2106,9 @@ public abstract class AbstractSurefireMojo
     }
 
     private InPluginVMSurefireStarter createInprocessStarter( @Nonnull ProviderInfo provider,
-                                                              @Nonnull ClassLoaderConfiguration classLoaderConfiguration,
-                                                              @Nonnull RunOrderParameters runOrderParameters,
-                                                              @Nonnull DefaultScanResult scanResult )
+                                      @Nonnull ClassLoaderConfiguration classLoaderConfiguration,
+                                      @Nonnull RunOrderParameters runOrderParameters,
+                                      @Nonnull DefaultScanResult scanResult )
         throws MojoExecutionException, MojoFailureException
     {
         StartupConfiguration startupConfiguration =

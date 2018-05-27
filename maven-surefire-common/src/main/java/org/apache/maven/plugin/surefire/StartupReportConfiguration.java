@@ -96,8 +96,8 @@ public final class StartupReportConfiguration
     @SuppressWarnings( "checkstyle:parameternumber" )
     public StartupReportConfiguration( boolean useFile, boolean printSummary, String reportFormat,
                                        boolean redirectTestOutputToFile, boolean disableXmlReport,
-                                       @Nonnull File reportsDirectory, boolean trimStackTrace, String reportNameSuffix,
-                                       File statisticsFile, boolean requiresRunHistory,
+                                       @Nonnull File reportsDirectory, boolean trimStackTrace,
+                                       String reportNameSuffix, File statisticsFile, boolean requiresRunHistory,
                                        int rerunFailingTestsCount, String xsdSchemaLocation, String encoding,
                                        String pluginName, RunOrderParameters runOrderParameters )
     {

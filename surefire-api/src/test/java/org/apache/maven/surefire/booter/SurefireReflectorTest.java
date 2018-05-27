@@ -18,14 +18,24 @@ package org.apache.maven.surefire.booter;
 * under the License.
 */
 
-import junit.framework.TestCase;
 import org.apache.maven.surefire.report.ReporterFactory;
 import org.apache.maven.surefire.report.RunListener;
 import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
+import org.junit.Test;
+
+import java.io.File;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class SurefireReflectorTest
-        extends TestCase
 {
+    @Test
     public void testShouldCreateFactoryWithoutException()
     {
         ReporterFactory factory = new ReporterFactory() {
@@ -46,4 +56,21 @@ public class SurefireReflectorTest
         assertNotNull( baseProviderFactory.getReporterFactory() );
         assertSame( factory, baseProviderFactory.getReporterFactory() );
     }
+
+    @Test
+    public void testCreateRunOrderParameters() {
+        // given
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        SurefireReflector reflector = new SurefireReflector( cl );
+        RunOrders runOrders = new RunOrders( RunOrder.RANDOM );
+        Randomizer randomizer = new Randomizer();
+        File statisticsFile = new File( "." );
+        RunOrderParameters parameters = new RunOrderParameters( runOrders, randomizer, statisticsFile );
+
+        // when
+        Object created = reflector.createRunOrderParameters( parameters );
+
+        assertTrue( created instanceof RunOrderParameters );
+    }
+
 }
