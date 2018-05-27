@@ -44,9 +44,32 @@ import static org.apache.maven.surefire.booter.AbstractPathConfiguration.CHILD_D
 import static org.apache.maven.surefire.booter.AbstractPathConfiguration.CLASSPATH;
 import static org.apache.maven.surefire.booter.AbstractPathConfiguration.ENABLE_ASSERTIONS;
 import static org.apache.maven.surefire.booter.AbstractPathConfiguration.SUREFIRE_CLASSPATH;
-// CHECKSTYLE_OFF: imports
-import static org.apache.maven.surefire.booter.BooterConstants.*;
-// CHECKSTYLE_ON: imports
+import static org.apache.maven.surefire.booter.BooterConstants.EXCLUDES_PROPERTY_PREFIX;
+import static org.apache.maven.surefire.booter.BooterConstants.FAIL_FAST_COUNT;
+import static org.apache.maven.surefire.booter.BooterConstants.FAILIFNOTESTS;
+import static org.apache.maven.surefire.booter.BooterConstants.FORKTESTSET;
+import static org.apache.maven.surefire.booter.BooterConstants.FORKTESTSET_PREFER_TESTS_FROM_IN_STREAM;
+import static org.apache.maven.surefire.booter.BooterConstants.INCLUDES_PROPERTY_PREFIX;
+import static org.apache.maven.surefire.booter.BooterConstants.ISTRIMSTACKTRACE;
+import static org.apache.maven.surefire.booter.BooterConstants.MAIN_CLI_OPTIONS;
+import static org.apache.maven.surefire.booter.BooterConstants.PLUGIN_PID;
+import static org.apache.maven.surefire.booter.BooterConstants.PROVIDER_CONFIGURATION;
+import static org.apache.maven.surefire.booter.BooterConstants.RANDOM_SEED;
+import static org.apache.maven.surefire.booter.BooterConstants.REPORTSDIRECTORY;
+import static org.apache.maven.surefire.booter.BooterConstants.REQUESTEDTEST;
+import static org.apache.maven.surefire.booter.BooterConstants.RERUN_FAILING_TESTS_COUNT;
+import static org.apache.maven.surefire.booter.BooterConstants.RUN_ORDER;
+import static org.apache.maven.surefire.booter.BooterConstants.RUN_STATISTICS_FILE;
+import static org.apache.maven.surefire.booter.BooterConstants.SHUTDOWN;
+import static org.apache.maven.surefire.booter.BooterConstants.SOURCE_DIRECTORY;
+import static org.apache.maven.surefire.booter.BooterConstants.SPECIFIC_TEST_PROPERTY_PREFIX;
+import static org.apache.maven.surefire.booter.BooterConstants.SYSTEM_EXIT_TIMEOUT;
+import static org.apache.maven.surefire.booter.BooterConstants.TEST_CLASSES_DIRECTORY;
+import static org.apache.maven.surefire.booter.BooterConstants.TEST_SUITE_XML_FILES;
+import static org.apache.maven.surefire.booter.BooterConstants.TESTARTIFACT_CLASSIFIER;
+import static org.apache.maven.surefire.booter.BooterConstants.TESTARTIFACT_VERSION;
+import static org.apache.maven.surefire.booter.BooterConstants.USEMANIFESTONLYJAR;
+import static org.apache.maven.surefire.booter.BooterConstants.USESYSTEMCLASSLOADER;
 import static org.apache.maven.surefire.booter.SystemPropertyManager.writePropertiesFile;
 
 /**
