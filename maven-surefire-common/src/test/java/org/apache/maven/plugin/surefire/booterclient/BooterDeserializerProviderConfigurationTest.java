@@ -230,7 +230,7 @@ public class BooterDeserializerProviderConfigurationTest
                                                  boolean readTestsFromInStream )
         throws IOException
     {
-        final ForkConfiguration forkConfiguration = ForkConfigurationTest.getForkConfiguration( null, null );
+        final ForkConfiguration forkConfiguration = ForkConfigurationTest.getForkConfiguration( (String) null );
         PropertiesWrapper props = new PropertiesWrapper( new HashMap<String, String>() );
         BooterSerializer booterSerializer = new BooterSerializer( forkConfiguration );
         Object test;
@@ -243,8 +243,9 @@ public class BooterDeserializerProviderConfigurationTest
             test = "aTest";
         }
         final File propsTest = booterSerializer.serialize( props, booterConfiguration, testProviderConfiguration, test,
-                                                           readTestsFromInStream );
+                                                           readTestsFromInStream, 51L );
         BooterDeserializer booterDeserializer = new BooterDeserializer( new FileInputStream( propsTest ) );
+        assertEquals( 51L, (Object) booterDeserializer.getPluginPid() );
         return booterDeserializer.deserialize();
     }
 
@@ -264,7 +265,7 @@ public class BooterDeserializerProviderConfigurationTest
         );
         return new ProviderConfiguration( directoryScannerParameters, runOrderParameters, true, reporterConfiguration,
                 new TestArtifactInfo( "5.0", "ABC" ), testSuiteDefinition, new HashMap<String, String>(), aTestTyped,
-                readTestsFromInStream, cli, 0, Shutdown.DEFAULT );
+                readTestsFromInStream, cli, 0, Shutdown.DEFAULT, 0 );
     }
 
     private StartupConfiguration getTestStartupConfiguration( ClassLoaderConfiguration classLoaderConfiguration )

@@ -32,7 +32,7 @@ public final class RunOrderArguments
 {
     private final Iterable<String> positional;
 
-    RunOrderArguments(@Nonnull Iterable<String> positional)
+    RunOrderArguments( @Nonnull Iterable<String> positional )
     {
         this.positional = positional;
     }

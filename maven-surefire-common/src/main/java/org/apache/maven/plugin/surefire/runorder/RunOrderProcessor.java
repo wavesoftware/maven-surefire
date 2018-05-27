@@ -1,16 +1,5 @@
 package org.apache.maven.plugin.surefire.runorder;
 
-import org.apache.maven.surefire.testset.RunOrderParameters;
-import org.apache.maven.surefire.util.Randomizer;
-import org.apache.maven.surefire.util.RunOrder;
-import org.apache.maven.surefire.util.RunOrderArguments;
-import org.apache.maven.surefire.util.RunOrderMapper;
-import org.apache.maven.surefire.util.RunOrders;
-
-import javax.annotation.Nullable;
-import javax.annotation.ParametersAreNonnullByDefault;
-import java.io.File;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -30,6 +19,17 @@ import java.io.File;
  * under the License.
  */
 
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrderArguments;
+import org.apache.maven.surefire.util.RunOrderMapper;
+import org.apache.maven.surefire.util.RunOrders;
+
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+import java.io.File;
+
 /**
  * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
  * @since 2018-05-24
@@ -39,19 +39,20 @@ public final class RunOrderProcessor
 {
     private final RunOrderMapper runOrderMapper = new RunOrderMapper();
 
-    public RunOrderParameters createRunOrderParameters(RunOrders runOrders,
-                                                       @Nullable String statisticsFileName)
+    public RunOrderParameters createRunOrderParameters( RunOrders runOrders,
+                                                        File statisticsFile )
     {
         @Nullable String seed = extractSeedFromRunOrders( runOrders );
         Randomizer randomizer = new Randomizer( seed );
         return new RunOrderParameters(
                 runOrders,
                 randomizer,
-                getStatisticsFile( statisticsFileName )
+                statisticsFile
         );
     }
 
-    public RunOrders readRunOrders( String runOrder ) {
+    public RunOrders readRunOrders( String runOrder )
+    {
         return runOrderMapper.fromString( runOrder );
     }
 
@@ -73,14 +74,6 @@ public final class RunOrderProcessor
             }
             return sb.toString();
         }
-    }
-
-    @Nullable
-    private File getStatisticsFile(@Nullable String statisticsFileName )
-    {
-        return statisticsFileName != null
-                ? new File( statisticsFileName )
-                : null;
     }
 
 }

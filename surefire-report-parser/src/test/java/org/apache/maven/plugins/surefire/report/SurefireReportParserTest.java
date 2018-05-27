@@ -26,11 +26,14 @@ import java.net.URLDecoder;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+
+import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.apache.maven.reporting.MavenReportException;
 
 import junit.framework.TestCase;
+
+import static java.util.Locale.ENGLISH;
 
 /**
  *
@@ -43,17 +46,18 @@ public class SurefireReportParserTest
     /**
      * {@inheritDoc}
      */
+    @Override
     protected void setUp()
         throws Exception
     {
         super.setUp();
-        report = new SurefireReportParser( null, Locale.ENGLISH );
+        report = new SurefireReportParser( null, ENGLISH, new NullConsoleLogger() );
     }
 
     public void testParseXMLReportFiles()
         throws MavenReportException, UnsupportedEncodingException
     {
-        report.setReportsDirectory( getTestDir( "/test-reports" ) );
+        report.setReportsDirectory( getTestDir() );
 
         List<ReportTestSuite> suites = report.parseXMLReportFiles();
 
@@ -67,10 +71,10 @@ public class SurefireReportParserTest
         }
     }
 
-    private File getTestDir( String path )
+    private File getTestDir()
         throws UnsupportedEncodingException
     {
-        URL resource = getClass().getResource( path );
+        URL resource = getClass().getResource( "/test-reports" );
         // URLDecoder.decode necessary for JDK 1.5+, where spaces are escaped to %20
         return new File( URLDecoder.decode( resource.getPath(), "UTF-8" ) ).getAbsoluteFile();
     }

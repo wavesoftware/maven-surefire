@@ -83,6 +83,7 @@ public class SingleGroupMatcher
         return "*" + enabled;
     }
 
+    @Override
     public boolean enabled( Class<?>... cats )
     {
         if ( cats != null )
@@ -105,16 +106,17 @@ public class SingleGroupMatcher
         return false;
     }
 
+    @Override
     public boolean enabled( String... cats )
     {
         for ( String cat : cats )
         {
-            if ( cat == null || cat.trim().length() < 1 )
+            if ( cat == null || cat.trim().isEmpty() )
             {
                 continue;
             }
 
-            if ( cat.endsWith( enabled ) )
+            if ( cat.equals( enabled ) )
             {
                 return true;
             }
@@ -128,6 +130,7 @@ public class SingleGroupMatcher
         return false;
     }
 
+    @Override
     public void loadGroupClasses( ClassLoader classLoader )
     {
         try
@@ -136,7 +139,10 @@ public class SingleGroupMatcher
         }
         catch ( ClassNotFoundException e )
         {
-            throw new RuntimeException( "Unable to load category: " + enabled, e );
+            // class is not available at runtime, for instance this would happen in reactor projects
+            // in which not all modules have the required class on the classpath/module path
+            System.out.println( "[WARNING] Couldn't load group class '" + enabled + "' in Surefire|Failsafe plugin. "
+                    + "The group class is ignored!" );
         }
     }
 }

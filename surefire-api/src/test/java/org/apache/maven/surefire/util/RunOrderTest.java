@@ -19,57 +19,38 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class RunOrderTest
-    extends TestCase
 {
+
+    @Test
     public void testShouldReturnRunOrderForLowerCaseName()
     {
-        assertEquals( RunOrder.HOURLY, RunOrder.valueOfMulti( "hourly" )[0] );
+        assertEquals( RunOrder.HOURLY, RunOrder.valueOf( "hourly" ) );
     }
 
-    public void testMultiValue()
-    {
-        final RunOrder[] hourlies = RunOrder.valueOfMulti( "failedfirst,balanced" );
-        assertEquals( RunOrder.FAILEDFIRST, hourlies[0] );
-        assertEquals( RunOrder.BALANCED, hourlies[1] );
-    }
-
-    public void testRandom()
-    {
-        final RunOrder[] randoms = RunOrder.valueOfMulti( "random" );
-        assertEquals( 1, randoms.length );
-        RunOrder random = randoms[0];
-        assertEquals( RunOrder.RANDOM, random );
-    }
-
-    public void testAsString()
-    {
-        RunOrder[] orders = new RunOrder[]{ RunOrder.FAILEDFIRST, RunOrder.ALPHABETICAL };
-        assertEquals( "failedfirst,alphabetical", RunOrder.asString( orders ) );
-    }
-
-    public void testShouldReturnRunOrderForUpperCaseName()
-    {
-        assertEquals( RunOrder.HOURLY, RunOrder.valueOfMulti( "HOURLY" )[0] );
-    }
-
-    public void testShouldReturnNullForNullName()
-    {
-        assertTrue( RunOrder.valueOfMulti( null ).length == 0 );
-    }
-
+    @Test
     public void testShouldThrowExceptionForInvalidName()
     {
         try
         {
-            RunOrder.valueOfMulti( "arbitraryName" );
+            RunOrder.valueOf( "arbitraryName" );
             fail( "IllegalArgumentException not thrown." );
         }
         catch ( IllegalArgumentException expected )
         {
-
+            assertTrue( expected.getMessage().contains( "Please use one of the following RunOrders" ) );
         }
+    }
+
+    @Test
+    public void testShouldReturnStringRepr()
+    {
+        assertEquals( "hourly", RunOrder.HOURLY.toString() );
     }
 }

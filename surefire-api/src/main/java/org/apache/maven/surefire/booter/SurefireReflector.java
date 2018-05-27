@@ -19,6 +19,8 @@ package org.apache.maven.surefire.booter;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
+import org.apache.maven.plugin.surefire.log.api.ConsoleLoggerDecorator;
 import org.apache.maven.surefire.cli.CommandLineOption;
 import org.apache.maven.surefire.providerapi.ProviderParameters;
 import org.apache.maven.surefire.report.ReporterConfiguration;
@@ -32,11 +34,12 @@ import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.ReflectionUtils;
 import org.apache.maven.surefire.util.RunOrderMapper;
+import org.apache.maven.surefire.util.RunOrders;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
-import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -57,7 +60,7 @@ import static org.apache.maven.surefire.util.ReflectionUtils.newInstance;
 
 /**
  * Does reflection based invocation of the surefire methods.
- * <p/>
+ * <br>
  * This is to avoid complications with linkage issues
  *
  * @author Kristian Rosenvold
@@ -106,6 +109,8 @@ public class SurefireReflector
 
     private final Class<?> randomizerClass;
 
+    private final Class<?> runOrdersClass;
+
     private final RunOrderMapper runOrderMapper = new RunOrderMapper();
 
 
@@ -136,6 +141,7 @@ public class SurefireReflector
             shutdownAwareClass = surefireClassLoader.loadClass( ShutdownAware.class.getName() );
             shutdownClass = (Class<Enum>) surefireClassLoader.loadClass( Shutdown.class.getName() );
             randomizerClass = surefireClassLoader.loadClass( Randomizer.class.getName() );
+            runOrdersClass = surefireClassLoader.loadClass( RunOrders.class.getName() );
         }
         catch ( ClassNotFoundException e )
         {
@@ -157,9 +163,6 @@ public class SurefireReflector
 
     }
 
-    /**
-     * @noinspection UnusedDeclaration
-     */
     class ClassLoaderProxy
         implements InvocationHandler
     {
@@ -167,13 +170,13 @@ public class SurefireReflector
 
         /**
          * @param delegate a target
-         * @noinspection UnusedDeclaration
          */
-        public ClassLoaderProxy( Object delegate )
+        ClassLoaderProxy( Object delegate )
         {
             this.target = delegate;
         }
 
+        @Override
         public Object invoke( Object proxy, Method method, Object[] args )
             throws Throwable
         {
@@ -221,7 +224,7 @@ public class SurefireReflector
             return null;
         }
         //Can't use the constructor with the RunOrder parameter. Using it causes some integration tests to fail.
-        Class<?>[] arguments = { File.class, List.class, List.class, List.class, boolean.class, String.class };
+        Class<?>[] arguments = { File.class, List.class, List.class, List.class, boolean.class, runOrdersClass };
         Constructor constructor = getConstructor( this.directoryScannerParameters, arguments );
         return newInstance( constructor,
                             directoryScannerParameters.getTestClassesDirectory(),
@@ -233,14 +236,14 @@ public class SurefireReflector
     }
 
 
-    public Object createRunOrderParameters( @Nullable RunOrderParameters runOrderParameters )
+    public Object createRunOrderParameters( RunOrderParameters runOrderParameters )
     {
         if ( runOrderParameters == null )
         {
             return null;
         }
         //Can't use the constructor with the RunOrder parameter. Using it causes some integration tests to fail.
-        Class<?>[] arguments = { String.class, randomizerClass, File.class };
+        Class<?>[] arguments = { runOrdersClass, randomizerClass, File.class };
         Constructor constructor = getConstructor( this.runOrderParameters, arguments );
         File runStatisticsFile = runOrderParameters.getRunStatisticsFile();
         Object randomizer = createRandomizer( runOrderParameters.getRandomizer() );
@@ -278,17 +281,10 @@ public class SurefireReflector
         return newInstance( constructor, testArtifactInfo.getVersion(), testArtifactInfo.getClassifier() );
     }
 
-
     Object createReporterConfiguration( ReporterConfiguration reporterConfig )
     {
         Constructor constructor = getConstructor( reporterConfiguration, File.class, boolean.class );
         return newInstance( constructor, reporterConfig.getReportsDirectory(), reporterConfig.isTrimStackTrace() );
-    }
-
-    public static ReporterFactory createForkingReporterFactoryInCurrentClassLoader( boolean trimStackTrace,
-                                                                                    PrintStream originalSystemOut )
-    {
-        return new ForkingReporterFactory( trimStackTrace, originalSystemOut );
     }
 
     public Object createBooterConfiguration( ClassLoader surefireClassLoader, Object factoryInstance,
@@ -346,6 +342,11 @@ public class SurefireReflector
                 }
             }
         }
+    }
+
+    public void setSystemExitTimeout( Object o, Integer systemExitTimeout )
+    {
+        invokeSetter( o, "setSystemExitTimeout", Integer.class, systemExitTimeout );
     }
 
     public void setDirectoryScannerParameters( Object o, DirectoryScannerParameters dirScannerParams )
@@ -435,6 +436,11 @@ public class SurefireReflector
         return runResult.isAssignableFrom( o.getClass() );
     }
 
+    public Object createConsoleLogger( @Nonnull ConsoleLogger consoleLogger )
+    {
+        return createConsoleLogger( consoleLogger, surefireClassLoader );
+    }
+
     private static Collection<Integer> toOrdinals( Collection<? extends Enum> enums )
     {
         Collection<Integer> ordinals = new ArrayList<Integer>( enums.size() );
@@ -443,6 +449,19 @@ public class SurefireReflector
             ordinals.add( e.ordinal() );
         }
         return ordinals;
+    }
+
+    public static Object createConsoleLogger( ConsoleLogger consoleLogger, ClassLoader cl )
+    {
+        try
+        {
+            Class<?> decoratorClass = cl.loadClass( ConsoleLoggerDecorator.class.getName() );
+            return getConstructor( decoratorClass, Object.class ).newInstance( consoleLogger );
+        }
+        catch ( Exception e )
+        {
+            throw new SurefireReflectionException( e );
+        }
     }
 
 }

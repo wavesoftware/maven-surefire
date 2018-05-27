@@ -25,8 +25,6 @@ import org.apache.maven.surefire.group.match.InverseGroupMatcher;
 import org.apache.maven.surefire.group.match.OrGroupMatcher;
 import org.apache.maven.surefire.group.match.SingleGroupMatcher;
 
-import java.text.ParseException;
-
 public class GroupMatcherParserTest
     extends TestCase
 {

@@ -39,9 +39,9 @@ public class RunOrderParameters
     private final Randomizer randomizer;
 
 
-    public RunOrderParameters(@Nonnull RunOrders runOrders,
-                              @Nullable Randomizer randomizer,
-                              @Nullable File runStatisticsFile )
+    public RunOrderParameters( @Nonnull RunOrders runOrders,
+                               @Nullable Randomizer randomizer,
+                               @Nullable File runStatisticsFile )
     {
         this.runOrders = runOrders;
         this.randomizer = ensureRandomizer( runOrders, randomizer );

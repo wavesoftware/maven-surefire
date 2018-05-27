@@ -20,11 +20,12 @@ package org.apache.maven.plugins.surefire.report;
  */
 
 import org.apache.maven.doxia.module.xhtml.XhtmlSink;
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
+import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.StringWriter;
-import java.util.ResourceBundle;
 
 import static java.util.Collections.singletonList;
 import static java.util.Locale.ENGLISH;
@@ -43,16 +44,16 @@ public class Surefire597Test
     {
         File basedir = new File( "." ).getCanonicalFile();
         File report = new File( basedir, "target/test-classes/surefire-597" );
-        SurefireReportGenerator gen = new SurefireReportGenerator( singletonList( report ), ENGLISH, true, null );
-        ResourceBundle resourceBundle = ResourceBundle.getBundle( "surefire-report", ENGLISH );
+        ConsoleLogger log = new NullConsoleLogger();
+        SurefireReportGenerator gen = new SurefireReportGenerator( singletonList( report ), ENGLISH, true, null, log );
         StringWriter writer = new StringWriter();
-        gen.doGenerateReport( resourceBundle, new XhtmlSink( writer ) {} );
+        gen.doGenerateReport( new SurefireReportMojo().getBundle( ENGLISH ), new XhtmlSink( writer ) {} );
         String xml = writer.toString();
         assertThat( xml, containsString( toSystemNewLine(
             "<table border=\"1\" class=\"bodyTable\">\n"
                 + "<tr class=\"a\">\n"
                 + "<th>Tests</th>\n"
-                + "<th>Errors </th>\n"
+                + "<th>Errors</th>\n"
                 + "<th>Failures</th>\n"
                 + "<th>Skipped</th>\n"
                 + "<th>Success Rate</th>\n"
@@ -71,7 +72,7 @@ public class Surefire597Test
                 + "<tr class=\"a\">\n"
                 + "<th>Package</th>\n"
                 + "<th>Tests</th>\n"
-                + "<th>Errors </th>\n"
+                + "<th>Errors</th>\n"
                 + "<th>Failures</th>\n"
                 + "<th>Skipped</th>\n"
                 + "<th>Success Rate</th>\n"
@@ -90,14 +91,14 @@ public class Surefire597Test
                 + "<th></th>\n"
                 + "<th>Class</th>\n"
                 + "<th>Tests</th>\n"
-                + "<th>Errors </th>\n"
+                + "<th>Errors</th>\n"
                 + "<th>Failures</th>\n"
                 + "<th>Skipped</th>\n"
                 + "<th>Success Rate</th>\n"
                 + "<th>Time</th></tr>\n"
                 + "<tr class=\"b\">\n"
-                + "<td><a href=\"#surefireMyTest\"><img src=\"images/icon_error_sml.gif\" alt=\"\" /></a></td>\n"
-                + "<td><a href=\"#surefireMyTest\">MyTest</a></td>\n"
+                + "<td><a href=\"#surefire.MyTest\"><img src=\"images/icon_error_sml.gif\" alt=\"\" /></a></td>\n"
+                + "<td><a href=\"#surefire.MyTest\">MyTest</a></td>\n"
                 + "<td>1</td>\n"
                 + "<td>1</td>\n"
                 + "<td>0</td>\n"
@@ -115,7 +116,6 @@ public class Surefire597Test
                 + "<tr class=\"a\">\n"
                 + "<td></td>\n"
                 + "<td>\n"
-                + "<div id=\"testerror\">surefire.MyTest:13</div></td></tr></table>" ) ) );
-
+                + "<div id=\"test-error\">surefire.MyTest:13</div></td></tr></table>" ) ) );
     }
 }

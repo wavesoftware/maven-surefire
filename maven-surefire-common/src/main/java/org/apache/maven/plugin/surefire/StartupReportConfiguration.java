@@ -20,7 +20,6 @@ package org.apache.maven.plugin.surefire;
  */
 
 import org.apache.maven.plugin.surefire.report.ConsoleOutputFileReporter;
-import org.apache.maven.plugin.surefire.report.ConsoleReporter;
 import org.apache.maven.plugin.surefire.report.DirectConsoleOutput;
 import org.apache.maven.plugin.surefire.report.FileReporter;
 import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
@@ -28,34 +27,34 @@ import org.apache.maven.plugin.surefire.report.TestcycleConsoleOutputReceiver;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
 import org.apache.maven.plugin.surefire.runorder.StatisticsReporter;
 import org.apache.maven.surefire.testset.RunOrderParameters;
-import org.apache.maven.surefire.util.RunOrder;
-import org.apache.maven.surefire.util.RunOrders;
 
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.apache.maven.plugin.surefire.report.ConsoleReporter.BRIEF;
+import static org.apache.maven.plugin.surefire.report.ConsoleReporter.PLAIN;
 
 /**
  * All the parameters used to construct reporters
- * <p/>
+ * <br>
  *
  * @author Kristian Rosenvold
  */
-public class StartupReportConfiguration
+public final class StartupReportConfiguration
 {
-    public static final String BRIEF_REPORT_FORMAT = ConsoleReporter.BRIEF;
+    public static final String BRIEF_REPORT_FORMAT = BRIEF;
 
-    public static final String PLAIN_REPORT_FORMAT = ConsoleReporter.PLAIN;
+    public static final String PLAIN_REPORT_FORMAT = PLAIN;
 
     public static final String DEFAULT_PLUGIN_NAME = "surefire";
-    /**
-     * VisibilityForTesting
-     */
-    protected PrintStream originalSystemOut;
+
+    private final PrintStream originalSystemOut;
 
     private final PrintStream originalSystemErr;
 
@@ -67,7 +66,7 @@ public class StartupReportConfiguration
 
     private final String reportNameSuffix;
 
-    private final String configurationHash;
+    private final File statisticsFile;
 
     private final boolean requiresRunHistory;
 
@@ -81,23 +80,25 @@ public class StartupReportConfiguration
 
     private final int rerunFailingTestsCount;
 
-    private String xsdSchemaLocation;
+    private final String xsdSchemaLocation;
 
     private final String pluginName;
 
     private final RunOrderParameters runOrderParameters;
 
-    private final Properties testVmSystemProperties = new Properties();
-
     private final Map<String, Map<String, List<WrappedReportEntry>>> testClassMethodRunHistory
         = new ConcurrentHashMap<String, Map<String, List<WrappedReportEntry>>>();
+
+    private final Charset encoding;
+
+    private StatisticsReporter statisticsReporter;
 
     @SuppressWarnings( "checkstyle:parameternumber" )
     public StartupReportConfiguration( boolean useFile, boolean printSummary, String reportFormat,
                                        boolean redirectTestOutputToFile, boolean disableXmlReport,
                                        @Nonnull File reportsDirectory, boolean trimStackTrace, String reportNameSuffix,
-                                       String configurationHash, boolean requiresRunHistory,
-                                       int rerunFailingTestsCount, String xsdSchemaLocation,
+                                       File statisticsFile, boolean requiresRunHistory,
+                                       int rerunFailingTestsCount, String xsdSchemaLocation, String encoding,
                                        String pluginName, RunOrderParameters runOrderParameters )
     {
         this.useFile = useFile;
@@ -108,44 +109,16 @@ public class StartupReportConfiguration
         this.reportsDirectory = reportsDirectory;
         this.trimStackTrace = trimStackTrace;
         this.reportNameSuffix = reportNameSuffix;
-        this.configurationHash = configurationHash;
+        this.statisticsFile = statisticsFile;
         this.requiresRunHistory = requiresRunHistory;
         this.originalSystemOut = System.out;
         this.originalSystemErr = System.err;
         this.rerunFailingTestsCount = rerunFailingTestsCount;
         this.xsdSchemaLocation = xsdSchemaLocation;
+        String charset = trimToNull( encoding );
+        this.encoding = charset == null ? Charset.defaultCharset() : Charset.forName( charset );
         this.pluginName = pluginName;
         this.runOrderParameters = runOrderParameters;
-    }
-
-    /**
-     * For testing purposes only.
-     */
-    public static StartupReportConfiguration defaultValue()
-    {
-        RunOrderParameters runOrderParameters = new RunOrderParameters(
-                new RunOrders( RunOrder.DEFAULT ),
-                null,
-                null
-        );
-        File target = new File( "./target" );
-        return new StartupReportConfiguration( true, true, "PLAIN", false, false, target, false, null, "TESTHASH",
-                                               false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );
-    }
-
-    /**
-     * For testing purposes only.
-     */
-    public static StartupReportConfiguration defaultNoXml()
-    {
-        RunOrderParameters runOrderParameters = new RunOrderParameters(
-                new RunOrders( RunOrder.DEFAULT ),
-                null,
-                null
-        );
-        File target = new File( "./target" );
-        return new StartupReportConfiguration( true, true, "PLAIN", false, true, target, false, null, "TESTHASHxXML",
-                                               false, 0, null, DEFAULT_PLUGIN_NAME, runOrderParameters );
     }
 
     public boolean isUseFile()
@@ -199,7 +172,7 @@ public class StartupReportConfiguration
     public FileReporter instantiateFileReporter()
     {
         return isUseFile() && isBriefOrPlainFormat()
-            ? new FileReporter( reportsDirectory, getReportNameSuffix() )
+            ? new FileReporter( reportsDirectory, getReportNameSuffix(), encoding )
             : null;
     }
 
@@ -209,16 +182,6 @@ public class StartupReportConfiguration
         return BRIEF_REPORT_FORMAT.equals( fmt ) || PLAIN_REPORT_FORMAT.equals( fmt );
     }
 
-    public ConsoleReporter instantiateConsoleReporter()
-    {
-        return shouldReportToConsole() ? new ConsoleReporter( originalSystemOut ) : null;
-    }
-
-    private boolean shouldReportToConsole()
-    {
-        return isUseFile() ? isPrintSummary() : isRedirectTestOutputToFile() || isBriefOrPlainFormat();
-    }
-
     public TestcycleConsoleOutputReceiver instantiateConsoleOutputFileReporter()
     {
         return isRedirectTestOutputToFile()
@@ -226,29 +189,23 @@ public class StartupReportConfiguration
             : new DirectConsoleOutput( originalSystemOut, originalSystemErr );
     }
 
-    public StatisticsReporter instantiateStatisticsReporter()
+    public synchronized StatisticsReporter getStatisticsReporter()
     {
-        return requiresRunHistory ? new StatisticsReporter( getStatisticsFile() ) : null;
+        if ( statisticsReporter == null )
+        {
+            statisticsReporter = requiresRunHistory ? new StatisticsReporter( getStatisticsFile() ) : null;
+        }
+        return statisticsReporter;
     }
 
     public File getStatisticsFile()
     {
-        return new File( reportsDirectory.getParentFile().getParentFile(), ".surefire-" + this.configurationHash );
-    }
-
-    public Properties getTestVmSystemProperties()
-    {
-        return testVmSystemProperties;
+        return statisticsFile;
     }
 
     public boolean isTrimStackTrace()
     {
         return trimStackTrace;
-    }
-
-    public String getConfigurationHash()
-    {
-        return configurationHash;
     }
 
     public boolean isRequiresRunHistory()
@@ -264,6 +221,11 @@ public class StartupReportConfiguration
     public String getXsdSchemaLocation()
     {
         return xsdSchemaLocation;
+    }
+
+    public Charset getEncoding()
+    {
+        return encoding;
     }
 
     public String getPluginName()

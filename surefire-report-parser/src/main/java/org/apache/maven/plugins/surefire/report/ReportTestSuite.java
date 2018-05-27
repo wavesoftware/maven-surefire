@@ -122,15 +122,7 @@ public final class ReportTestSuite
 
     public int getNumberOfTests()
     {
-        if ( numberOfTests != null )
-        {
-            return numberOfTests;
-        }
-        if ( testCases != null )
-        {
-            return testCases.size();
-        }
-        return 0;
+        return numberOfTests == null ? testCases.size() : numberOfTests;
     }
 
     public ReportTestSuite setNumberOfTests( int numberOfTests )
@@ -196,6 +188,7 @@ public final class ReportTestSuite
     /**
      * {@inheritDoc}
      */
+    @Override
     public String toString()
     {
         return fullClassName + " [" + getNumberOfTests() + "/" + getNumberOfFailures() + "/"

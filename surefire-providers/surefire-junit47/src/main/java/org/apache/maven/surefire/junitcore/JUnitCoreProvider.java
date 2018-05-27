@@ -30,7 +30,7 @@ import org.apache.maven.surefire.common.junit48.JUnit48Reflector;
 import org.apache.maven.surefire.common.junit48.JUnit48TestChecker;
 import org.apache.maven.surefire.providerapi.AbstractProvider;
 import org.apache.maven.surefire.providerapi.ProviderParameters;
-import org.apache.maven.surefire.report.ConsoleLogger;
+import org.apache.maven.surefire.report.ConsoleStream;
 import org.apache.maven.surefire.report.ReporterFactory;
 import org.apache.maven.surefire.suite.RunResult;
 import org.apache.maven.surefire.testset.TestListResolver;
@@ -39,19 +39,15 @@ import org.apache.maven.surefire.util.RunOrderCalculator;
 import org.apache.maven.surefire.util.ScanResult;
 import org.apache.maven.surefire.util.ScannerFilter;
 import org.apache.maven.surefire.util.TestsToRun;
+import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
-import org.junit.runner.notification.Failure;
-import org.junit.runner.notification.RunListener;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Collections.unmodifiableCollection;
 import static org.apache.maven.surefire.booter.CommandReader.getReader;
-import static org.apache.maven.surefire.common.junit4.JUnit4ProviderUtil.generateFailingTests;
+import static org.apache.maven.surefire.common.junit4.JUnit4ProviderUtil.generateFailingTestDescriptions;
 import static org.apache.maven.surefire.common.junit4.JUnit4RunListenerFactory.createCustomListeners;
 import static org.apache.maven.surefire.common.junit4.Notifier.pureNotifier;
 import static org.apache.maven.surefire.junitcore.ConcurrentRunListener.createInstance;
@@ -72,7 +68,7 @@ public class JUnitCoreProvider
 
     private final ScannerFilter scannerFilter;
 
-    private final Collection<RunListener> customRunListeners;
+    private final String customRunListeners;
 
     private final ProviderParameters providerParameters;
 
@@ -102,11 +98,11 @@ public class JUnitCoreProvider
         scannerFilter = new JUnit48TestChecker( testClassLoader );
         testResolver = bootParams.getTestRequest().getTestListResolver();
         rerunFailingTestsCount = bootParams.getTestRequest().getRerunFailingTestsCount();
-        String listeners = bootParams.getProviderProperties().get( "listener" );
-        customRunListeners = unmodifiableCollection( createCustomListeners( listeners ) );
+        customRunListeners = bootParams.getProviderProperties().get( "listener" );
         jUnit48Reflector = new JUnit48Reflector( testClassLoader );
     }
 
+    @Override
     public Iterable<Class<?>> getSuites()
     {
         testsToRun = scanClassPath();
@@ -118,20 +114,19 @@ public class JUnitCoreProvider
         return jUnitCoreParameters.isNoThreading();
     }
 
+    @Override
     public RunResult invoke( Object forkTestSet )
         throws TestSetFailedException
     {
         final ReporterFactory reporterFactory = providerParameters.getReporterFactory();
 
-        final RunResult runResult;
-
-        final ConsoleLogger consoleLogger = providerParameters.getConsoleLogger();
-
-        Filter filter = jUnit48Reflector.isJUnit48Available() ? createJUnit48Filter() : null;
+        final ConsoleStream consoleStream = providerParameters.getConsoleLogger();
 
         Notifier notifier =
-            new Notifier( createRunListener( reporterFactory, consoleLogger ), getSkipAfterFailureCount() );
+            new Notifier( createRunListener( reporterFactory, consoleStream ), getSkipAfterFailureCount() );
         // startCapture() called in createRunListener() in prior to setTestsToRun()
+
+        Filter filter = jUnit48Reflector.isJUnit48Available() ? createJUnit48Filter() : null;
 
         if ( testsToRun == null )
         {
@@ -147,9 +142,11 @@ public class JUnitCoreProvider
             registerPleaseStopJUnitListener( notifier );
         }
 
+        final RunResult runResult;
+
         try
         {
-            JUnitCoreWrapper core = new JUnitCoreWrapper( notifier, jUnitCoreParameters, consoleLogger );
+            JUnitCoreWrapper core = new JUnitCoreWrapper( notifier, jUnitCoreParameters, consoleStream );
 
             if ( commandsReader != null )
             {
@@ -158,7 +155,7 @@ public class JUnitCoreProvider
             }
 
             notifier.asFailFast( isFailFast() );
-            core.execute( testsToRun, customRunListeners, filter );
+            core.execute( testsToRun, createCustomListeners( customRunListeners ), filter );
             notifier.asFailFast( false );
 
             // Rerun failing tests if rerunFailingTestsCount is larger than 0
@@ -166,15 +163,14 @@ public class JUnitCoreProvider
             {
                 Notifier rerunNotifier = pureNotifier();
                 notifier.copyListenersTo( rerunNotifier );
-                JUnitCoreWrapper rerunCore = new JUnitCoreWrapper( rerunNotifier, jUnitCoreParameters, consoleLogger );
+                JUnitCoreWrapper rerunCore = new JUnitCoreWrapper( rerunNotifier, jUnitCoreParameters, consoleStream );
                 for ( int i = 0; i < rerunFailingTestsCount && !testFailureListener.getAllFailures().isEmpty(); i++ )
                 {
-                    List<Failure> failures = testFailureListener.getAllFailures();
-                    Map<Class<?>, Set<String>> failingTests = generateFailingTests( failures, testClassLoader );
+                    Set<Description> failures = generateFailingTestDescriptions( testFailureListener.getAllFailures() );
                     testFailureListener.reset();
                     FilterFactory filterFactory = new FilterFactory( testClassLoader );
-                    Filter failingMethodsFilter = filterFactory.createFailingMethodFilter( failingTests );
-                    rerunCore.execute( testsToRun, failingMethodsFilter );
+                    Filter failureDescriptionFilter = filterFactory.createMatchAnyDescriptionFilter( failures );
+                    rerunCore.execute( testsToRun, failureDescriptionFilter );
                 }
             }
         }
@@ -223,6 +219,7 @@ public class JUnitCoreProvider
     {
         commandsReader.addShutdownListener( new CommandListener()
         {
+            @Override
             public void update( Command command )
             {
                 testsToRun.markTestSetFinished();
@@ -234,6 +231,7 @@ public class JUnitCoreProvider
     {
         commandsReader.addSkipNextTestsListener( new CommandListener()
         {
+            @Override
             public void update( Command command )
             {
                 stoppable.pleaseStop();
@@ -241,7 +239,7 @@ public class JUnitCoreProvider
         } );
     }
 
-    private JUnit4RunListener createRunListener( ReporterFactory reporterFactory, ConsoleLogger consoleLogger )
+    private JUnit4RunListener createRunListener( ReporterFactory reporterFactory, ConsoleStream consoleStream )
         throws TestSetFailedException
     {
         if ( isSingleThreaded() )
@@ -255,7 +253,7 @@ public class JUnitCoreProvider
             final Map<String, TestSet> testSetMap = new ConcurrentHashMap<String, TestSet>();
 
             ConcurrentRunListener listener = createInstance( testSetMap, reporterFactory, isParallelTypes(),
-                                                             isParallelMethodsAndTypes(), consoleLogger );
+                                                             isParallelMethodsAndTypes(), consoleStream );
             startCapture( listener );
 
             return new JUnitCoreRunListener( listener, testSetMap );

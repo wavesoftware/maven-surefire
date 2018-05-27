@@ -19,7 +19,7 @@ package org.apache.maven.plugins.surefire.report;
  * under the License.
  */
 
-import org.apache.maven.shared.utils.StringUtils;
+import static org.apache.maven.shared.utils.StringUtils.isNotBlank;
 
 /**
  *
@@ -45,6 +45,10 @@ public final class ReportTestCase
     private String failureDetail;
 
     private boolean hasFailure;
+
+    private boolean hasError;
+
+    private boolean hasSkipped;
 
     public String getName()
     {
@@ -117,12 +121,6 @@ public final class ReportTestCase
         return failureType;
     }
 
-    private ReportTestCase setFailureType( String failureType )
-    {
-        this.failureType = failureType;
-        return this;
-    }
-
     public String getFailureErrorLine()
     {
         return failureErrorLine;
@@ -147,8 +145,31 @@ public final class ReportTestCase
 
     public ReportTestCase setFailure( String message, String type )
     {
-        hasFailure = StringUtils.isNotBlank( type );
+        hasFailure = isNotBlank( type );
+        hasError = false;
+        hasSkipped = false;
         return setFailureMessage( message ).setFailureType( type );
+    }
+
+    public ReportTestCase setError( String message, String type )
+    {
+        hasFailure = false;
+        hasError = isNotBlank( type );
+        hasSkipped = false;
+        return setFailureMessage( message ).setFailureType( type );
+    }
+
+    public ReportTestCase setSkipped( String message )
+    {
+        hasFailure = false;
+        hasError = false;
+        hasSkipped = isNotBlank( message );
+        return setFailureMessage( message ).setFailureType( "skipped" );
+    }
+
+    public boolean isSuccessful()
+    {
+        return !hasFailure() && !hasError() && !hasSkipped();
     }
 
     public boolean hasFailure()
@@ -156,11 +177,28 @@ public final class ReportTestCase
         return hasFailure;
     }
 
+    public boolean hasError()
+    {
+        return hasError;
+    }
+
+    public boolean hasSkipped()
+    {
+        return hasSkipped;
+    }
+
     /**
      * {@inheritDoc}
      */
+    @Override
     public String toString()
     {
         return fullName;
+    }
+
+    private ReportTestCase setFailureType( String failureType )
+    {
+        this.failureType = failureType;
+        return this;
     }
 }

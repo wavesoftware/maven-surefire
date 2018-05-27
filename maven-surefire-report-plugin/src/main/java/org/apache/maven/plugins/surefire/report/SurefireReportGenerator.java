@@ -24,44 +24,45 @@ import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.ResourceBundle;
 import org.apache.maven.doxia.markup.HtmlMarkup;
 import org.apache.maven.doxia.sink.Sink;
 import org.apache.maven.doxia.sink.SinkEventAttributeSet;
-import org.apache.maven.doxia.sink.SinkEventAttributes;
 import org.apache.maven.doxia.util.DoxiaUtils;
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.reporting.MavenReportException;
 
+import static org.apache.maven.doxia.markup.HtmlMarkup.A;
+import static org.apache.maven.doxia.sink.Sink.JUSTIFY_LEFT;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.CLASS;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.HREF;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.ID;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.NAME;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.STYLE;
+import static org.apache.maven.doxia.sink.SinkEventAttributes.TYPE;
+
 /**
- *
+ * This generator creates HTML Report from Surefire and Failsafe XML Report.
  */
 public final class SurefireReportGenerator
 {
-    private static final Object[] TAG_TYPE_START = new Object[]{ HtmlMarkup.TAG_TYPE_START };
-
-    private static final Object[] TAG_TYPE_END = new Object[]{ HtmlMarkup.TAG_TYPE_END };
+    private static final int LEFT = JUSTIFY_LEFT;
+    private static final Object[] TAG_TYPE_START = { HtmlMarkup.TAG_TYPE_START };
+    private static final Object[] TAG_TYPE_END = { HtmlMarkup.TAG_TYPE_END };
 
     private final SurefireReportParser report;
-
+    private final boolean showSuccess;
+    private final String xrefLocation;
     private List<ReportTestSuite> testSuites;
 
-    private final boolean showSuccess;
-
-    private final String xrefLocation;
-    
-    private static final int LEFT = Sink.JUSTIFY_LEFT;
-
     public SurefireReportGenerator( List<File> reportsDirectories, Locale locale, boolean showSuccess,
-                                    String xrefLocation )
+                                    String xrefLocation, ConsoleLogger consoleLogger )
     {
-        report = new SurefireReportParser( reportsDirectories, locale );
-
-        this.xrefLocation = xrefLocation;
-
+        report = new SurefireReportParser( reportsDirectories, locale, consoleLogger );
         this.showSuccess = showSuccess;
+        this.xrefLocation = xrefLocation;
     }
 
-    public void doGenerateReport( ResourceBundle bundle, Sink sink )
+    public void doGenerateReport( LocalizedProperties bundle, Sink sink )
         throws MavenReportException
     {
         testSuites = report.parseXMLReportFiles();
@@ -69,7 +70,7 @@ public final class SurefireReportGenerator
         sink.head();
 
         sink.title();
-        sink.text( bundle.getString( "report.surefire.header" ) );
+        sink.text( bundle.getReportHeader() );
         sink.title_();
 
         sink.head_();
@@ -77,14 +78,14 @@ public final class SurefireReportGenerator
         sink.body();
 
         SinkEventAttributeSet atts = new SinkEventAttributeSet();
-        atts.addAttribute( SinkEventAttributes.TYPE, "text/javascript" );
+        atts.addAttribute( TYPE, "text/javascript" );
         sink.unknown( "script", new Object[]{ HtmlMarkup.TAG_TYPE_START }, atts );
         sink.unknown( "cdata", new Object[]{ HtmlMarkup.CDATA_TYPE, javascriptToggleDisplayCode() }, null );
         sink.unknown( "script", new Object[]{ HtmlMarkup.TAG_TYPE_END }, null );
 
         sink.section1();
         sink.sectionTitle1();
-        sink.text( bundle.getString( "report.surefire.header" ) );
+        sink.text( bundle.getReportHeader() );
         sink.sectionTitle1_();
         sink.section1_();
 
@@ -114,13 +115,13 @@ public final class SurefireReportGenerator
         sink.close();
     }
 
-    private void constructSummarySection( ResourceBundle bundle, Sink sink )
+    private void constructSummarySection( LocalizedProperties bundle, Sink sink )
     {
         Map<String, String> summary = report.getSummary( testSuites );
 
         sink.section1();
         sink.sectionTitle1();
-        sink.text( bundle.getString( "report.surefire.label.summary" ) );
+        sink.text( bundle.getReportLabelSummary() );
         sink.sectionTitle1_();
 
         sinkAnchor( sink, "Summary" );
@@ -135,17 +136,17 @@ public final class SurefireReportGenerator
 
         sink.tableRow();
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.tests" ) );
+        sinkHeader( sink, bundle.getReportLabelTests() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.errors" ) );
+        sinkHeader( sink, bundle.getReportLabelErrors() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.failures" ) );
+        sinkHeader( sink, bundle.getReportLabelFailures() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.skipped" ) );
+        sinkHeader( sink, bundle.getReportLabelSkipped() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.successrate" ) );
+        sinkHeader( sink, bundle.getReportLabelSuccessRate() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.time" ) );
+        sinkHeader( sink, bundle.getReportLabelTime() );
 
         sink.tableRow_();
 
@@ -172,7 +173,7 @@ public final class SurefireReportGenerator
         sink.lineBreak();
 
         sink.paragraph();
-        sink.text( bundle.getString( "report.surefire.text.note1" ) );
+        sink.text( bundle.getReportTextNode1() );
         sink.paragraph_();
 
         sinkLineBreak( sink );
@@ -180,14 +181,14 @@ public final class SurefireReportGenerator
         sink.section1_();
     }
 
-    private void constructPackagesSection( ResourceBundle bundle, Sink sink,
+    private void constructPackagesSection( LocalizedProperties bundle, Sink sink,
                                            Map<String, List<ReportTestSuite>> suitePackages )
     {
         NumberFormat numberFormat = report.getNumberFormat();
 
         sink.section1();
         sink.sectionTitle1();
-        sink.text( bundle.getString( "report.surefire.label.packagelist" ) );
+        sink.text( bundle.getReportLabelPackageList() );
         sink.sectionTitle1_();
 
         sinkAnchor( sink, "Package_List" );
@@ -202,19 +203,19 @@ public final class SurefireReportGenerator
 
         sink.tableRow();
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.package" ) );
+        sinkHeader( sink, bundle.getReportLabelPackage() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.tests" ) );
+        sinkHeader( sink, bundle.getReportLabelTests() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.errors" ) );
+        sinkHeader( sink, bundle.getReportLabelErrors() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.failures" ) );
+        sinkHeader( sink, bundle.getReportLabelFailures() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.skipped" ) );
+        sinkHeader( sink, bundle.getReportLabelSkipped() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.successrate" ) );
+        sinkHeader( sink, bundle.getReportLabelSuccessRate() );
 
-        sinkHeader( sink, bundle.getString( "report.surefire.label.time" ) );
+        sinkHeader( sink, bundle.getReportLabelTime() );
 
         sink.tableRow_();
 
@@ -252,7 +253,7 @@ public final class SurefireReportGenerator
         sink.lineBreak();
 
         sink.paragraph();
-        sink.text( bundle.getString( "report.surefire.text.note2" ) );
+        sink.text( bundle.getReportTextNode2() );
         sink.paragraph_();
 
         for ( Map.Entry<String, List<ReportTestSuite>> entry : suitePackages.entrySet() )
@@ -290,19 +291,19 @@ public final class SurefireReportGenerator
 
                 sinkHeader( sink, "" );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.class" ) );
+                sinkHeader( sink, bundle.getReportLabelClass() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.tests" ) );
+                sinkHeader( sink, bundle.getReportLabelTests() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.errors" ) );
+                sinkHeader( sink, bundle.getReportLabelErrors() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.failures" ) );
+                sinkHeader( sink, bundle.getReportLabelFailures() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.skipped" ) );
+                sinkHeader( sink, bundle.getReportLabelSkipped() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.successrate" ) );
+                sinkHeader( sink, bundle.getReportLabelSuccessRate() );
 
-                sinkHeader( sink, bundle.getString( "report.surefire.label.time" ) );
+                sinkHeader( sink, bundle.getReportLabelTime() );
 
                 sink.tableRow_();
 
@@ -333,7 +334,7 @@ public final class SurefireReportGenerator
 
         sink.tableCell();
 
-        sink.link( "#" + suite.getPackageName() + suite.getName() );
+        sink.link( "#" + suite.getPackageName() + '.' + suite.getName() );
 
         if ( suite.getNumberOfErrors() > 0 )
         {
@@ -356,7 +357,7 @@ public final class SurefireReportGenerator
 
         sink.tableCell_();
 
-        sinkCellLink( sink, suite.getName(), "#" + suite.getPackageName() + suite.getName() );
+        sinkCellLink( sink, suite.getName(), "#" + suite.getPackageName() + '.' + suite.getName() );
 
         sinkCell( sink, Integer.toString( suite.getNumberOfTests() ) );
 
@@ -375,13 +376,13 @@ public final class SurefireReportGenerator
         sink.tableRow_();
     }
 
-    private void constructTestCasesSection( ResourceBundle bundle, Sink sink )
+    private void constructTestCasesSection( LocalizedProperties bundle, Sink sink )
     {
         NumberFormat numberFormat = report.getNumberFormat();
 
         sink.section1();
         sink.sectionTitle1();
-        sink.text( bundle.getString( "report.surefire.label.testcases" ) );
+        sink.text( bundle.getReportLabelTestCases() );
         sink.sectionTitle1_();
 
         sinkAnchor( sink, "Test_Cases" );
@@ -392,20 +393,20 @@ public final class SurefireReportGenerator
         {
             List<ReportTestCase> testCases = suite.getTestCases();
 
-            if ( testCases != null && !testCases.isEmpty() )
+            if ( !testCases.isEmpty() )
             {
                 sink.section2();
                 sink.sectionTitle2();
                 sink.text( suite.getName() );
                 sink.sectionTitle2_();
 
-                sinkAnchor( sink, suite.getPackageName() + suite.getName() );
+                sinkAnchor( sink, suite.getPackageName() + '.' + suite.getName() );
 
                 boolean showTable = false;
 
                 for ( ReportTestCase testCase : testCases )
                 {
-                    if ( testCase.hasFailure() || showSuccess )
+                    if ( !testCase.isSuccessful() || showSuccess )
                     {
                         showTable = true;
 
@@ -421,7 +422,7 @@ public final class SurefireReportGenerator
 
                     for ( ReportTestCase testCase : testCases )
                     {
-                        if ( testCase.hasFailure() || showSuccess )
+                        if ( !testCase.isSuccessful() || showSuccess )
                         {
                             constructTestCaseSection( sink, numberFormat, testCase );
                         }
@@ -441,7 +442,7 @@ public final class SurefireReportGenerator
         sink.section1_();
     }
 
-    private void constructTestCaseSection( Sink sink, NumberFormat numberFormat, ReportTestCase testCase )
+    private static void constructTestCaseSection( Sink sink, NumberFormat numberFormat, ReportTestCase testCase )
     {
         sink.tableRow();
 
@@ -462,7 +463,7 @@ public final class SurefireReportGenerator
 
         sink.tableCell_();
 
-        if ( testCase.hasFailure() )
+        if ( !testCase.isSuccessful() )
         {
             sink.tableCell();
 
@@ -471,28 +472,28 @@ public final class SurefireReportGenerator
             sinkLink( sink, testCase.getName(), "#" + toHtmlId( testCase.getFullName() ) );
 
             SinkEventAttributeSet atts = new SinkEventAttributeSet();
-            atts.addAttribute( SinkEventAttributes.CLASS, "detailToggle" );
-            atts.addAttribute( SinkEventAttributes.STYLE, "display:inline" );
+            atts.addAttribute( CLASS, "detailToggle" );
+            atts.addAttribute( STYLE, "display:inline" );
             sink.unknown( "div", TAG_TYPE_START, atts );
 
-            sink.link( "javascript:toggleDisplay('" + toHtmlId( testCase.getFullName() ) + "');" );
+            sinkLink( sink, "javascript:toggleDisplay('" + toHtmlId( testCase.getFullName() ) + "');" );
 
             atts = new SinkEventAttributeSet();
-            atts.addAttribute( SinkEventAttributes.STYLE, "display:inline;" );
-            atts.addAttribute( SinkEventAttributes.ID, toHtmlId( testCase.getFullName() ) + "off" );
+            atts.addAttribute( STYLE, "display:inline;" );
+            atts.addAttribute( ID, toHtmlId( testCase.getFullName() ) + "-off" );
             sink.unknown( "span", TAG_TYPE_START, atts );
             sink.text( " + " );
             sink.unknown( "span", TAG_TYPE_END, null );
 
             atts = new SinkEventAttributeSet();
-            atts.addAttribute( SinkEventAttributes.STYLE, "display:none;" );
-            atts.addAttribute( SinkEventAttributes.ID, toHtmlId( testCase.getFullName() ) + "on" );
+            atts.addAttribute( STYLE, "display:none;" );
+            atts.addAttribute( ID, toHtmlId( testCase.getFullName() ) + "-on" );
             sink.unknown( "span", TAG_TYPE_START, atts );
             sink.text( " - " );
             sink.unknown( "span", TAG_TYPE_END, null );
 
             sink.text( "[ Detail ]" );
-            sink.link_();
+            sinkLink_( sink );
 
             sink.unknown( "div", TAG_TYPE_END, null );
 
@@ -507,7 +508,7 @@ public final class SurefireReportGenerator
 
         sink.tableRow_();
 
-        if ( testCase.hasFailure() )
+        if ( !testCase.isSuccessful() )
         {
             sink.tableRow();
 
@@ -524,8 +525,8 @@ public final class SurefireReportGenerator
 
                 sink.tableCell();
                 SinkEventAttributeSet atts = new SinkEventAttributeSet();
-                atts.addAttribute( SinkEventAttributes.ID, toHtmlId( testCase.getFullName() ) + "error" );
-                atts.addAttribute( SinkEventAttributes.STYLE, "display:none;" );
+                atts.addAttribute( ID, toHtmlId( testCase.getFullName() ) + toHtmlIdFailure( testCase ) );
+                atts.addAttribute( STYLE, "display:none;" );
                 sink.unknown( "div", TAG_TYPE_START, atts );
 
                 sink.verbatim( null );
@@ -542,16 +543,16 @@ public final class SurefireReportGenerator
         }
     }
 
-    private String toHtmlId( String id )
+    private static String toHtmlId( String id )
     {
         return DoxiaUtils.isValidId( id ) ? id : DoxiaUtils.encodeId( id, true );
     }
 
-    private void constructFailureDetails( Sink sink, ResourceBundle bundle, List<ReportTestCase> failures )
+    private void constructFailureDetails( Sink sink, LocalizedProperties bundle, List<ReportTestCase> failures )
     {
         sink.section1();
         sink.sectionTitle1();
-        sink.text( bundle.getString( "report.surefire.label.failuredetails" ) );
+        sink.text( bundle.getReportLabelFailureDetails() );
         sink.sectionTitle1_();
 
         sinkAnchor( sink, "Failure_Details" );
@@ -599,7 +600,7 @@ public final class SurefireReportGenerator
 
                 sink.tableCell();
                 SinkEventAttributeSet atts = new SinkEventAttributeSet();
-                atts.addAttribute( SinkEventAttributes.ID, tCase.getName() + "error" );
+                atts.addAttribute( ID, tCase.getName() + toHtmlIdFailure( tCase ) );
                 sink.unknown( "div", TAG_TYPE_START, atts );
 
                 String fullClassName = tCase.getFullClassName();
@@ -632,34 +633,39 @@ public final class SurefireReportGenerator
         sink.section1_();
     }
 
-    private void constructHotLinks( Sink sink, ResourceBundle bundle )
+    private void constructHotLinks( Sink sink, LocalizedProperties bundle )
     {
         if ( !testSuites.isEmpty() )
         {
             sink.paragraph();
 
             sink.text( "[" );
-            sinkLink( sink, bundle.getString( "report.surefire.label.summary" ), "#Summary" );
+            sinkLink( sink, bundle.getReportLabelSummary(), "#Summary" );
             sink.text( "]" );
 
             sink.text( " [" );
-            sinkLink( sink, bundle.getString( "report.surefire.label.packagelist" ), "#Package_List" );
+            sinkLink( sink, bundle.getReportLabelPackageList(), "#Package_List" );
             sink.text( "]" );
 
             sink.text( " [" );
-            sinkLink( sink, bundle.getString( "report.surefire.label.testcases" ), "#Test_Cases" );
+            sinkLink( sink, bundle.getReportLabelTestCases(), "#Test_Cases" );
             sink.text( "]" );
 
             sink.paragraph_();
         }
     }
 
-    private void sinkLineBreak( Sink sink )
+    private static String toHtmlIdFailure( ReportTestCase tCase )
+    {
+        return tCase.hasError() ? "-error" : "-failure";
+    }
+
+    private static void sinkLineBreak( Sink sink )
     {
         sink.lineBreak();
     }
 
-    private void sinkIcon( String type, Sink sink )
+    private static void sinkIcon( String type, Sink sink )
     {
         sink.figure();
 
@@ -679,35 +685,35 @@ public final class SurefireReportGenerator
         sink.figure_();
     }
 
-    private void sinkHeader( Sink sink, String header )
+    private static void sinkHeader( Sink sink, String header )
     {
         sink.tableHeaderCell();
         sink.text( header );
         sink.tableHeaderCell_();
     }
 
-    private void sinkCell( Sink sink, String text )
+    private static void sinkCell( Sink sink, String text )
     {
         sink.tableCell();
         sink.text( text );
         sink.tableCell_();
     }
 
-    private void sinkLink( Sink sink, String text, String link )
+    private static void sinkLink( Sink sink, String text, String link )
     {
         sink.link( link );
         sink.text( text );
         sink.link_();
     }
 
-    private void sinkCellLink( Sink sink, String text, String link )
+    private static void sinkCellLink( Sink sink, String text, String link )
     {
         sink.tableCell();
         sinkLink( sink, text, link );
         sink.tableCell_();
     }
 
-    private void sinkCellAnchor( Sink sink, String text, String anchor )
+    private static void sinkCellAnchor( Sink sink, String text, String anchor )
     {
         sink.tableCell();
         sinkAnchor( sink, anchor );
@@ -715,10 +721,25 @@ public final class SurefireReportGenerator
         sink.tableCell_();
     }
 
-    private void sinkAnchor( Sink sink, String anchor )
+    private static void sinkAnchor( Sink sink, String anchor )
     {
-        sink.anchor( anchor );
-        sink.anchor_();
+        // Dollar '$' for nested classes is not valid character in sink.anchor() and therefore it is ignored
+        // https://issues.apache.org/jira/browse/SUREFIRE-1443
+        sink.unknown( A.toString(), TAG_TYPE_START, new SinkEventAttributeSet( NAME, anchor ) );
+        sink.unknown( A.toString(), TAG_TYPE_END, null );
+    }
+
+    private static void sinkLink( Sink sink, String href )
+    {
+        // The "'" argument in this JavaScript function would be escaped to "&apos;"
+        // sink.link( "javascript:toggleDisplay('" + toHtmlId( testCase.getFullName() ) + "');" );
+        sink.unknown( A.toString(), TAG_TYPE_START, new SinkEventAttributeSet( HREF, href ) );
+    }
+
+    @SuppressWarnings( "checkstyle:methodname" )
+    private static void sinkLink_( Sink sink )
+    {
+        sink.unknown( A.toString(), TAG_TYPE_END, null );
     }
 
     private static String javascriptToggleDisplayCode()
@@ -728,17 +749,20 @@ public final class SurefireReportGenerator
         // so we have to start with a newline and comment the CDATA closing in the end
 
         return "\n" + "function toggleDisplay(elementId) {\n"
-                + " var elm = document.getElementById(elementId + 'error');\n"
+                + " var elm = document.getElementById(elementId + '-error');\n"
+                + " if (elm == null) {\n"
+                + "  elm = document.getElementById(elementId + '-failure');\n"
+                + " }\n"
                 + " if (elm && typeof elm.style != \"undefined\") {\n"
-                + " if (elm.style.display == \"none\") {\n"
-                + " elm.style.display = \"\";\n"
-                + " document.getElementById(elementId + 'off').style.display = \"none\";\n"
-                + " document.getElementById(elementId + 'on').style.display = \"inline\";\n"
-                + " }" + " else if (elm.style.display == \"\") {"
-                + " elm.style.display = \"none\";\n"
-                + " document.getElementById(elementId + 'off').style.display = \"inline\";\n"
-                + " document.getElementById(elementId + 'on').style.display = \"none\";\n"
-                + " } \n"
+                + "  if (elm.style.display == \"none\") {\n"
+                + "   elm.style.display = \"\";\n"
+                + "   document.getElementById(elementId + '-off').style.display = \"none\";\n"
+                + "   document.getElementById(elementId + '-on').style.display = \"inline\";\n"
+                + "  } else if (elm.style.display == \"\") {"
+                + "   elm.style.display = \"none\";\n"
+                + "   document.getElementById(elementId + '-off').style.display = \"inline\";\n"
+                + "   document.getElementById(elementId + '-on').style.display = \"none\";\n"
+                + "  } \n"
                 + " } \n"
                 + " }\n"
                 + "//";

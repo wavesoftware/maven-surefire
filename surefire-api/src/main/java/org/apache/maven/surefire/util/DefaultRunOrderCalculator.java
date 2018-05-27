@@ -55,6 +55,7 @@ public class DefaultRunOrderCalculator
         this.sortOrder = this.runOrders.any() ? getSortOrderComparator( this.runOrders ) : null;
     }
 
+    @Override
     public TestsToRun orderTestClasses( TestsToRun scannedClasses )
     {
         List<Class<?>> result = new ArrayList<Class<?>>( INITIAL_CAPACITY );
@@ -125,6 +126,7 @@ public class DefaultRunOrderCalculator
     {
         return new Comparator<Class>()
         {
+            @Override
             public int compare( Class o1, Class o2 )
             {
                 return o2.getName().compareTo( o1.getName() );
@@ -136,6 +138,7 @@ public class DefaultRunOrderCalculator
     {
         return new Comparator<Class>()
         {
+            @Override
             public int compare( Class o1, Class o2 )
             {
                 return o1.getName().compareTo( o2.getName() );

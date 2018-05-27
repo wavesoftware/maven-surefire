@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import org.apache.maven.surefire.junitcore.JUnitCoreParameters;
-import org.apache.maven.surefire.report.ConsoleLogger;
+import org.apache.maven.surefire.report.ConsoleStream;
 import org.apache.maven.surefire.testset.TestSetFailedException;
 import org.apache.maven.surefire.util.internal.DaemonThreadFactory;
 import org.junit.internal.runners.ErrorReportingRunner;
@@ -56,6 +56,7 @@ import static org.apache.maven.surefire.junitcore.pc.Type.CLASSES;
 import static org.apache.maven.surefire.junitcore.pc.Type.METHODS;
 import static org.apache.maven.surefire.junitcore.pc.Type.SUITES;
 
+@SuppressWarnings( { "javadoc", "checkstyle:javadoctype" } )
 /**
  * Executing suites, classes and methods with defined concurrency. In this example the threads which completed
  * the suites and classes can be reused in parallel methods.
@@ -70,9 +71,9 @@ import static org.apache.maven.surefire.junitcore.pc.Type.SUITES;
  * Note that the type has always at least one thread even if unspecified. The capacity in
  * {@link ParallelComputerBuilder#useOnePool(int)} must be greater than the number of concurrent suites and classes
  * altogether.
- * <p/>
+ * <br>
  * The Computer can be stopped in a separate thread. Pending tests will be interrupted if the argument is
- * <tt>true</tt>.
+ * {@code true}.
  * <pre>
  * computer.describeStopped(true);
  * </pre>
@@ -92,7 +93,7 @@ public final class ParallelComputerBuilder
 
     private final Map<Type, Integer> parallelGroups = new EnumMap<Type, Integer>( Type.class );
 
-    private final ConsoleLogger logger;
+    private final ConsoleStream logger;
 
     private boolean useSeparatePools;
 
@@ -109,7 +110,7 @@ public final class ParallelComputerBuilder
      * Can be used only in unit tests.
      * Do NOT call this constructor in production.
      */
-    ParallelComputerBuilder( ConsoleLogger logger )
+    ParallelComputerBuilder( ConsoleStream logger )
     {
         this.logger = logger;
         runningInTests = true;
@@ -119,7 +120,7 @@ public final class ParallelComputerBuilder
         parallelGroups.put( METHODS, 0 );
     }
 
-    public ParallelComputerBuilder( ConsoleLogger logger, JUnitCoreParameters parameters )
+    public ParallelComputerBuilder( ConsoleStream logger, JUnitCoreParameters parameters )
     {
         this( logger );
         runningInTests = false;
@@ -332,7 +333,7 @@ public final class ParallelComputerBuilder
         }
 
         @Override
-        boolean shutdownThreadPoolsAwaitingKilled()
+        protected boolean shutdownThreadPoolsAwaitingKilled()
         {
             boolean notInterrupted = notThreadSafeTests.shutdownThreadPoolsAwaitingKilled();
             final Scheduler m = master;
@@ -428,10 +429,7 @@ public final class ParallelComputerBuilder
                 {
                     int children = countChildren( runner );
                     childrenCounter += children;
-                    if ( children != 0 )
-                    {
-                        runs.add( runner );
-                    }
+                    runs.add( runner );
                 }
             }
             return runs.isEmpty() ? new WrappedRunners() : new WrappedRunners( createSuite( runs ), childrenCounter );

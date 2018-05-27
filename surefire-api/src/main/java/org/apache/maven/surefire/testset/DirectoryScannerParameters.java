@@ -116,7 +116,8 @@ public class DirectoryScannerParameters
         return runOrders;
     }
 
-    private static RunOrders readRunOrders(String runOrder) {
+    private static RunOrders readRunOrders( String runOrder )
+    {
         return runOrder == null
                 ? new RunOrders( RunOrder.DEFAULT )
                 : RUN_ORDER_MAPPER.fromString( runOrder );

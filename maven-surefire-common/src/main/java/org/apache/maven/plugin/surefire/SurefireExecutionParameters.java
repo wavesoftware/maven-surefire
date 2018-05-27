@@ -27,7 +27,6 @@ import org.apache.maven.artifact.repository.ArtifactRepository;
  * This interface contains all the common parameters that have different implementations in Surefire vs IntegrationTest
  *
  * @author Stephen Connolly
- * @noinspection UnusedDeclaration, UnusedDeclaration
  */
 public interface SurefireExecutionParameters
 {
@@ -99,6 +98,10 @@ public interface SurefireExecutionParameters
 
     void setForkedProcessTimeoutInSeconds( int forkedProcessTimeoutInSeconds );
 
+    int getForkedProcessExitTimeoutInSeconds();
+
+    void setForkedProcessExitTimeoutInSeconds( int forkedProcessTerminationTimeoutInSeconds );
+
     double getParallelTestsTimeoutInSeconds();
 
     void setParallelTestsTimeoutInSeconds( double parallelTestsTimeoutInSeconds );
@@ -114,6 +117,10 @@ public interface SurefireExecutionParameters
     boolean isUseManifestOnlyJar();
 
     void setUseManifestOnlyJar( boolean useManifestOnlyJar );
+
+    String getEncoding();
+
+    void setEncoding( String encoding );
 
     Boolean getFailIfNoSpecifiedTests();
 

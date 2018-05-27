@@ -47,7 +47,7 @@ public class SurefireProperties
     implements KeyValueSource
 {
     private static final Collection<String> KEYS_THAT_CANNOT_BE_USED_AS_SYSTEM_PROPERTIES =
-            asList( "java.library.path", "file.encoding", "jdk.map.althashing.threshold" );
+            asList( "java.library.path", "file.encoding", "jdk.map.althashing.threshold", "line.separator" );
 
     private final LinkedHashSet<Object> items = new LinkedHashSet<Object>();
 
@@ -59,7 +59,7 @@ public class SurefireProperties
     {
         if ( source != null )
         {
-            this.putAll( source );
+            putAll( source );
         }
     }
 
@@ -68,6 +68,15 @@ public class SurefireProperties
         if ( source != null )
         {
             source.copyTo( this );
+        }
+    }
+
+    @Override
+    public synchronized void putAll( Map<?, ?> t )
+    {
+        for ( Map.Entry<?, ?> entry : t.entrySet() )
+        {
+            put( entry.getKey(), entry.getValue() );
         }
     }
 
@@ -92,6 +101,7 @@ public class SurefireProperties
         super.clear();
     }
 
+    @Override
     public synchronized Enumeration<Object> keys()
     {
         return Collections.enumeration( items );
@@ -147,7 +157,6 @@ public class SurefireProperties
         result.copyPropertiesFrom( props );
 
         copyProperties( result, systemPropertyVariables );
-        copyProperties( result, systemPropertyVariables );
 
         // We used to take all of our system properties and dump them in with the
         // user specified properties for SUREFIRE-121, causing SUREFIRE-491.
@@ -170,6 +179,7 @@ public class SurefireProperties
         }
     }
 
+    @Override
     public void copyTo( Map<Object, Object> target )
     {
         target.putAll( this );
@@ -188,6 +198,14 @@ public class SurefireProperties
         if ( aBoolean != null )
         {
             setProperty( key, aBoolean.toString() );
+        }
+    }
+
+    public void setProperty( String key, Long value )
+    {
+        if ( value != null )
+        {
+            setProperty( key, value.toString() );
         }
     }
 

@@ -19,26 +19,33 @@ package org.apache.maven.surefire.junitcore;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.StartupReportConfiguration;
+import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
-import org.apache.maven.surefire.report.ConsoleOutputCapture;
 import org.apache.maven.surefire.report.ConsoleOutputReceiver;
-import org.apache.maven.surefire.report.DefaultConsoleReporter;
+import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
 import org.apache.maven.surefire.report.ReporterFactory;
 import org.apache.maven.surefire.report.RunListener;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestSetFailedException;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 import org.junit.runner.Computer;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
+
+import static org.apache.maven.surefire.junitcore.ConcurrentRunListener.createInstance;
+import static org.apache.maven.surefire.report.ConsoleOutputCapture.startCapture;
 
 /**
  * @author Kristian Rosenvold
  */
 public class JUnitCoreTester
 {
-
     private final Computer computer;
 
     public JUnitCoreTester()
@@ -54,16 +61,14 @@ public class JUnitCoreTester
     public Result run( boolean parallelClasses, Class<?>... classes )
         throws TestSetFailedException, ExecutionException
     {
-        ReporterFactory reporterManagerFactory = DefaultReporterFactory.defaultNoXml();
+        ReporterFactory reporterManagerFactory = defaultNoXml();
 
         try
         {
-
             final HashMap<String, TestSet> classMethodCounts = new HashMap<String, TestSet>();
-            RunListener reporter =
-                ConcurrentRunListener.createInstance( classMethodCounts, reporterManagerFactory, parallelClasses, false,
-                                                      new DefaultConsoleReporter( System.out ) );
-            ConsoleOutputCapture.startCapture( (ConsoleOutputReceiver) reporter );
+            RunListener reporter = createInstance( classMethodCounts, reporterManagerFactory, parallelClasses, false,
+                                                         new DefaultDirectConsoleReporter( System.out ) );
+            startCapture( (ConsoleOutputReceiver) reporter );
 
             JUnitCoreRunListener runListener = new JUnitCoreRunListener( reporter, classMethodCounts );
             JUnitCore junitCore = new JUnitCore();
@@ -83,5 +88,30 @@ public class JUnitCoreTester
         }
     }
 
+    /**
+     * For testing purposes only.
+     *
+     * @return DefaultReporterFactory for testing purposes
+     */
+    public static DefaultReporterFactory defaultNoXml()
+    {
+        return new DefaultReporterFactory( defaultStartupReportConfiguration(), new NullConsoleLogger() );
+    }
 
+    /**
+     * For testing purposes only.
+     *
+     * @return StartupReportConfiguration fo testing purposes
+     */
+    private static StartupReportConfiguration defaultStartupReportConfiguration()
+    {
+        File target = new File( "./target" );
+        File statisticsFile = new File( target, "TESTHASHxXML" );
+        RunOrders runOrders = new RunOrders( RunOrder.DEFAULT );
+        RunOrderParameters runOrderParameters = new RunOrderParameters( runOrders, null, null );
+        return new StartupReportConfiguration( true, true, "PLAIN", false, true, target, false, null, statisticsFile,
+                false, 0, null, null,
+                "surefire", runOrderParameters
+        );
+    }
 }

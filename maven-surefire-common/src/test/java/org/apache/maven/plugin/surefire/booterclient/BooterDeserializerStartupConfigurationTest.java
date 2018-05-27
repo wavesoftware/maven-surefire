@@ -61,12 +61,14 @@ public class BooterDeserializerStartupConfigurationTest
     public void testClassPathConfiguration()
         throws IOException
     {
-        ClasspathConfiguration reloadedClasspathConfiguration =
+        AbstractPathConfiguration reloadedClasspathConfiguration =
             getReloadedStartupConfiguration().getClasspathConfiguration();
-        assertEquals( classpathConfiguration, reloadedClasspathConfiguration );
+
+        assertTrue( reloadedClasspathConfiguration instanceof ClasspathConfiguration );
+        assertCpConfigEquals( classpathConfiguration, (ClasspathConfiguration) reloadedClasspathConfiguration );
     }
 
-    private void assertEquals( ClasspathConfiguration expectedConfiguration,
+    private void assertCpConfigEquals( ClasspathConfiguration expectedConfiguration,
                                ClasspathConfiguration actualConfiguration )
     {
         assertEquals( expectedConfiguration.getTestClasspath().getClassPath(),
@@ -120,13 +122,14 @@ public class BooterDeserializerStartupConfigurationTest
     private StartupConfiguration saveAndReload( StartupConfiguration startupConfiguration )
         throws IOException
     {
-        final ForkConfiguration forkConfiguration = ForkConfigurationTest.getForkConfiguration( null, null );
+        final ForkConfiguration forkConfiguration = ForkConfigurationTest.getForkConfiguration( (String) null );
         PropertiesWrapper props = new PropertiesWrapper( new HashMap<String, String>() );
         BooterSerializer booterSerializer = new BooterSerializer( forkConfiguration );
         String aTest = "aTest";
         final File propsTest =
-            booterSerializer.serialize( props, getProviderConfiguration(), startupConfiguration, aTest, false );
+            booterSerializer.serialize( props, getProviderConfiguration(), startupConfiguration, aTest, false, null );
         BooterDeserializer booterDeserializer = new BooterDeserializer( new FileInputStream( propsTest ) );
+        assertNull( booterDeserializer.getPluginPid() );
         return booterDeserializer.getProviderConfiguration();
     }
 
@@ -148,7 +151,7 @@ public class BooterDeserializerStartupConfigurationTest
         );
         return new ProviderConfiguration( directoryScannerParameters, runOrderParameters, true, reporterConfiguration,
                 new TestArtifactInfo( "5.0", "ABC" ), testSuiteDefinition, new HashMap<String, String>(),
-                BooterDeserializerProviderConfigurationTest.aTestTyped, true, cli, 0, Shutdown.DEFAULT );
+                BooterDeserializerProviderConfigurationTest.aTestTyped, true, cli, 0, Shutdown.DEFAULT, 0 );
     }
 
     private StartupConfiguration getTestStartupConfiguration( ClassLoaderConfiguration classLoaderConfiguration )

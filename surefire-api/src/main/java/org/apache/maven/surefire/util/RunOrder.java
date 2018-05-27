@@ -19,9 +19,6 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A RunOrder specifies the order in which the tests will be run.
  *
@@ -46,29 +43,6 @@ public class RunOrder
     public static final RunOrder[] DEFAULT = new RunOrder[]{ FILESYSTEM };
 
     private static final RunOrderMapper RUN_ORDER_MAPPER = new RunOrderMapper();
-
-    /**
-     * Returns the specified RunOrder
-     *
-     * @param values The runorder string value
-     * @return An array of RunOrder objects, never null
-     * @deprecated Use {@link RunOrderMapper#fromString(String)} method
-     */
-    @Deprecated
-    public static RunOrder[] valueOfMulti( String values )
-    {
-        List<RunOrder> result = new ArrayList<RunOrder>();
-        if ( values != null )
-        {
-            Iterable<RunOrder> runOrders = RUN_ORDER_MAPPER
-                    .readWithoutArgumentsFromString( values );
-            for (RunOrder runOrder : runOrders)
-            {
-                result.add( runOrder );
-            }
-        }
-        return result.toArray(new RunOrder[0]);
-    }
 
     public static RunOrder valueOf( String name )
     {
@@ -115,16 +89,6 @@ public class RunOrder
         return new RunOrder[]{ ALPHABETICAL, FILESYSTEM, HOURLY, RANDOM, REVERSE_ALPHABETICAL, BALANCED, FAILEDFIRST };
     }
 
-    /**
-     * @deprecated Use {@link RunOrderMapper#asString(RunOrders)} method
-     */
-    @Deprecated
-    public static String asString( RunOrder[] runOrder )
-    {
-        RunOrders runOrders = new RunOrders( runOrder );
-        return RUN_ORDER_MAPPER.asString( runOrders );
-    }
-
     private final String name;
 
     private RunOrder( String name )
@@ -142,6 +106,7 @@ public class RunOrder
         return name;
     }
 
+    @Override
     public String toString()
     {
         return name;

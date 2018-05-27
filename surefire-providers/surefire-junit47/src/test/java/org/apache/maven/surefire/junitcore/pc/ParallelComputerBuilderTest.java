@@ -20,19 +20,21 @@ package org.apache.maven.surefire.junitcore.pc;
  */
 
 import net.jcip.annotations.NotThreadSafe;
-import org.apache.maven.surefire.junitcore.Logger;
+import org.apache.maven.surefire.report.ConsoleStream;
+import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.Stopwatch;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 import org.junit.runner.RunWith;
+import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.ParentRunner;
 import org.junit.runners.Suite;
+import org.junit.runners.model.InitializationError;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +43,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -49,7 +52,6 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
 import static org.apache.maven.surefire.junitcore.pc.RangeMatcher.between;
 import static org.junit.Assert.*;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * @author Tibor Digana (tibor17)
@@ -57,14 +59,15 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 public class ParallelComputerBuilderTest
 {
+    private static final int DELAY_MULTIPLIER = 7;
+
     private static final Object class1Lock = new Object();
 
     private static volatile boolean beforeShutdown;
 
     private static volatile Runnable shutdownTask;
 
-    @Rule
-    public final Stopwatch stopwatch = new Stopwatch() {};
+    private static final ConsoleStream logger = new DefaultDirectConsoleReporter( System.out );
 
     private static void testKeepBeforeAfter( ParallelComputerBuilder builder, Class<?>... classes )
     {
@@ -87,6 +90,13 @@ public class ParallelComputerBuilderTest
         }
     }
 
+    @BeforeClass
+    public static void cleanup() throws InterruptedException
+    {
+        System.gc();
+        Thread.sleep( 500L );
+    }
+
     @Before
     public void beforeTest()
     {
@@ -101,9 +111,18 @@ public class ParallelComputerBuilderTest
     }
 
     @Test
+    public void testsWithoutChildrenShouldAlsoBeRun()
+    {
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
+        ParallelComputerBuilder.PC computer = ( ParallelComputerBuilder.PC ) parallelComputerBuilder.buildComputer();
+        Result result = new JUnitCore().run( computer, TestWithoutPrecalculatedChildren.class );
+        assertThat( result.getRunCount(), is( 1 ) );
+    }
+
+    @Test
     public void parallelMethodsReuseOneOrTwoThreads()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.useOnePool( 4 );
 
         // One thread because one suite: TestSuite, however the capacity is 5.
@@ -119,8 +138,11 @@ public class ParallelComputerBuilderTest
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 0 ) );
@@ -131,11 +153,11 @@ public class ParallelComputerBuilderTest
         assertTrue( result.wasSuccessful() );
         if ( Class1.maxConcurrentMethods == 1 )
         {
-            assertThat( timeSpent, between( 1950, 2250 ) );
+            assertThat( timeSpent, between( 2000 * DELAY_MULTIPLIER - 50, 2250 * DELAY_MULTIPLIER ) );
         }
         else if ( Class1.maxConcurrentMethods == 2 )
         {
-            assertThat( timeSpent, between( 1450, 1750 ) );
+            assertThat( timeSpent, between( 1500 * DELAY_MULTIPLIER - 50, 1750 * DELAY_MULTIPLIER ) );
         }
         else
         {
@@ -146,7 +168,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void suiteAndClassInOnePool()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.useOnePool( 5 );
         parallelComputerBuilder.parallelSuites( 5 );
         parallelComputerBuilder.parallelClasses( 5 );
@@ -154,8 +176,11 @@ public class ParallelComputerBuilderTest
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class, Class1.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class, Class1.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 1 ) );
@@ -165,14 +190,18 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( 5 ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 2 ) );
-        assertThat( timeSpent, anyOf( between( 1450, 1750 ), between( 1950, 2250 ), between( 2450, 2750 ) ) );
+        assertThat( timeSpent, anyOf(
+                between( 1500 * DELAY_MULTIPLIER - 50, 1750 * DELAY_MULTIPLIER ),
+                between( 2000 * DELAY_MULTIPLIER - 50, 2250 * DELAY_MULTIPLIER ),
+                between( 2500 * DELAY_MULTIPLIER - 50, 2750 * DELAY_MULTIPLIER )
+        ) );
     }
 
     @Test
     public void onePoolWithUnlimitedParallelMethods()
     {
         // see ParallelComputerBuilder Javadoc
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.useOnePool( 8 );
         parallelComputerBuilder.parallelSuites( 2 );
         parallelComputerBuilder.parallelClasses( 4 );
@@ -180,8 +209,11 @@ public class ParallelComputerBuilderTest
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class, Class1.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class, Class1.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 1 ) );
@@ -191,13 +223,13 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( 8 ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 4 ) );
-        assertThat( timeSpent, between( 950, 1250 ) );
+        assertThat( timeSpent, between( 1000 * DELAY_MULTIPLIER - 50, 1250 * DELAY_MULTIPLIER ) );
     }
 
     @Test
     public void underflowParallelism()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.useOnePool( 3 );
 
         // One thread because one suite: TestSuite.
@@ -212,8 +244,11 @@ public class ParallelComputerBuilderTest
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 0 ) );
@@ -223,21 +258,24 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( 3 ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 1 ) );
-        assertThat( timeSpent, between( 1950, 2250 ) );
+        assertThat( timeSpent, between( 2000 * DELAY_MULTIPLIER - 50, 2250 * DELAY_MULTIPLIER ) );
     }
 
     @Test
     public void separatePoolsWithSuite()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.parallelSuites( 5 );
         parallelComputerBuilder.parallelClasses( 5 );
         parallelComputerBuilder.parallelMethods( 3 );
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 0 ) );
@@ -247,13 +285,13 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( ParallelComputerBuilder.TOTAL_POOL_SIZE_UNDEFINED ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 3 ) );
-        assertThat( timeSpent, between( 950, 1250 ) );
+        assertThat( timeSpent, between( 1000 * DELAY_MULTIPLIER - 50, 1250 * DELAY_MULTIPLIER ) );
     }
 
     @Test
     public void separatePoolsWithSuiteAndClass()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.parallelSuites( 5 );
         parallelComputerBuilder.parallelClasses( 5 );
         parallelComputerBuilder.parallelMethods( 3 );
@@ -263,8 +301,11 @@ public class ParallelComputerBuilderTest
         // 2 groups with 3 threads.
         // Each group takes 0.5s.
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class, Class1.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class, Class1.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 1 ) );
@@ -274,21 +315,24 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( ParallelComputerBuilder.TOTAL_POOL_SIZE_UNDEFINED ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 3 ) );
-        assertThat( timeSpent, between( 950, 1250 ) );
+        assertThat( timeSpent, between( 1000 * DELAY_MULTIPLIER - 50, 1250 * DELAY_MULTIPLIER ) );
     }
 
     @Test
     public void separatePoolsWithSuiteAndSequentialClasses()
     {
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.parallelSuites( 5 );
         parallelComputerBuilder.parallelClasses( 1 );
         parallelComputerBuilder.parallelMethods( 3 );
         assertFalse( parallelComputerBuilder.isOptimized() );
 
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
-        Result result = new JUnitCore().run( computer, TestSuite.class, Class1.class );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final JUnitCore core = new JUnitCore();
+        final long t1 = systemMillis();
+        final Result result = core.run( computer, TestSuite.class, Class1.class );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
 
         assertThat( computer.getSuites().size(), is( 1 ) );
         assertThat( computer.getClasses().size(), is( 1 ) );
@@ -298,33 +342,37 @@ public class ParallelComputerBuilderTest
         assertThat( computer.getPoolCapacity(), is( ParallelComputerBuilder.TOTAL_POOL_SIZE_UNDEFINED ) );
         assertTrue( result.wasSuccessful() );
         assertThat( Class1.maxConcurrentMethods, is( 2 ) );
-        assertThat( timeSpent, between( 1450, 1750 ) );
+        assertThat( timeSpent, between( 1500 * DELAY_MULTIPLIER - 50, 1750 * DELAY_MULTIPLIER ) );
     }
 
-    @Test( timeout = 2000 )
+    @Test( timeout = 2000 * DELAY_MULTIPLIER )
     public void shutdown()
     {
-        Result result = new ShutdownTest().run( false );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final long t1 = systemMillis();
+        final Result result = new ShutdownTest().run( false );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
         assertTrue( result.wasSuccessful() );
         assertTrue( beforeShutdown );
-        assertThat( timeSpent, between( 450, 1250 ) );
+        assertThat( timeSpent, between( 500 * DELAY_MULTIPLIER - 50, 1250 * DELAY_MULTIPLIER ) );
     }
 
-    @Test( timeout = 2000 )
+    @Test( timeout = 2000 * DELAY_MULTIPLIER )
     public void shutdownWithInterrupt()
     {
+        final long t1 = systemMillis();
         new ShutdownTest().run( true );
-        long timeSpent = stopwatch.runtime( MILLISECONDS );
+        final long t2 = systemMillis();
+        final long timeSpent = t2 - t1;
         assertTrue( beforeShutdown );
-        assertThat( timeSpent, between( 450, 1250 ) );
+        assertThat( timeSpent, between( 500 * DELAY_MULTIPLIER - 50, 1250 * DELAY_MULTIPLIER ) );
     }
 
     @Test
     public void nothingParallel()
     {
         JUnitCore core = new JUnitCore();
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger );
         assertFalse( builder.isOptimized() );
 
         Result result = core.run( builder.buildComputer(), NothingDoingTest1.class, NothingDoingTest2.class );
@@ -377,7 +425,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void keepBeforeAfterOneClass()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger );
         builder.parallelMethods();
         assertFalse( builder.isOptimized() );
         testKeepBeforeAfter( builder, NothingDoingTest1.class );
@@ -386,7 +434,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void keepBeforeAfterTwoClasses()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger );
         builder.useOnePool( 5 ).parallelClasses( 1 ).parallelMethods( 2 );
         assertFalse( builder.isOptimized() );
         testKeepBeforeAfter( builder, NothingDoingTest1.class, NothingDoingTest2.class );
@@ -395,7 +443,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void keepBeforeAfterTwoParallelClasses()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger );
         builder.useOnePool( 8 ).parallelClasses( 2 ).parallelMethods( 2 );
         assertFalse( builder.isOptimized() );
         JUnitCore core = new JUnitCore();
@@ -411,7 +459,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void notThreadSafeTest()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() )
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger )
             .useOnePool( 6 ).optimize( true ).parallelClasses( 3 ).parallelMethods( 3 );
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) builder.buildComputer();
         Result result = new JUnitCore().run( computer, NotThreadSafeTest1.class, NotThreadSafeTest2.class );
@@ -432,7 +480,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void mixedThreadSafety()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() )
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger )
             .useOnePool( 6 ).optimize( true ).parallelClasses( 3 ).parallelMethods( 3 );
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) builder.buildComputer();
         Result result = new JUnitCore().run( computer, NotThreadSafeTest1.class, NormalTest1.class );
@@ -454,7 +502,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void notThreadSafeTestsInSuite()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() )
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger )
             .useOnePool( 5 ).parallelMethods( 3 );
         assertFalse( builder.isOptimized() );
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) builder.buildComputer();
@@ -477,7 +525,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void mixedThreadSafetyInSuite()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() )
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger )
             .useOnePool( 10 ).optimize( true ).parallelSuites( 2 ).parallelClasses( 3 ).parallelMethods( 3 );
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) builder.buildComputer();
         Result result = new JUnitCore().run( computer, MixedSuite.class );
@@ -499,7 +547,7 @@ public class ParallelComputerBuilderTest
     @Test
     public void inheritanceWithNotThreadSafe()
     {
-        ParallelComputerBuilder builder = new ParallelComputerBuilder( new Logger() )
+        ParallelComputerBuilder builder = new ParallelComputerBuilder( logger )
             .useOnePool( 10 ).optimize( true ).parallelSuites( 2 ).parallelClasses( 3 ).parallelMethods( 3 );
         ParallelComputerBuilder.PC computer = (ParallelComputerBuilder.PC) builder.buildComputer();
         Result result = new JUnitCore().run( computer, OverMixedSuite.class );
@@ -526,10 +574,10 @@ public class ParallelComputerBuilderTest
         for ( int i = 0; i < 5; i++ )
         {
             System.gc();
-            TimeUnit.MILLISECONDS.sleep( 500 );
+            TimeUnit.MILLISECONDS.sleep( 500L );
         }
         Collection<Thread> expectedThreads = jvmThreads();
-        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() );
+        ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger );
         parallelComputerBuilder.parallelMethods( 3 );
         ParallelComputer computer = parallelComputerBuilder.buildComputer();
         Result result = new JUnitCore().run( computer, TestWithBeforeAfter.class );
@@ -538,7 +586,7 @@ public class ParallelComputerBuilderTest
         for ( int i = 0; i < 5 && expectedThreads.size() != jvmThreads().size(); i++ )
         {
             System.gc();
-            TimeUnit.MILLISECONDS.sleep( 500 );
+            TimeUnit.MILLISECONDS.sleep( 500L );
         }
         assertThat( jvmThreads(), is( expectedThreads ) );
     }
@@ -552,6 +600,7 @@ public class ParallelComputerBuilderTest
         appThreads.removeAll( Collections.singleton( (Thread) null ) );
         Collections.sort( appThreads, new Comparator<Thread>()
         {
+            @Override
             public int compare( Thread t1, Thread t2 )
             {
                 return (int) Math.signum( t1.getId() - t2.getId() );
@@ -564,7 +613,7 @@ public class ParallelComputerBuilderTest
     {
         Result run( final boolean useInterrupt )
         {
-            ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( new Logger() )
+            ParallelComputerBuilder parallelComputerBuilder = new ParallelComputerBuilder( logger )
                 .useOnePool( 8 )
                 .parallelSuites( 2 )
                 .parallelClasses( 3 )
@@ -576,6 +625,7 @@ public class ParallelComputerBuilderTest
                 (ParallelComputerBuilder.PC) parallelComputerBuilder.buildComputer();
             shutdownTask = new Runnable()
             {
+                @Override
                 public void run()
                 {
                     Collection<Description> startedTests = computer.describeStopped( useInterrupt ).getTriggeredTests();
@@ -599,7 +649,7 @@ public class ParallelComputerBuilderTest
             synchronized ( class1Lock )
             {
                 ++concurrentMethods;
-                class1Lock.wait( 500 );
+                class1Lock.wait( DELAY_MULTIPLIER * 500L );
                 maxConcurrentMethods = Math.max( maxConcurrentMethods, concurrentMethods-- );
             }
         }
@@ -681,6 +731,62 @@ public class ParallelComputerBuilderTest
     @Suite.SuiteClasses( { Class2.class, Class1.class } )
     public static class TestSuite
     {
+    }
+
+    public static class Test2
+    {
+        @Test
+        public void test()
+        {
+
+        }
+    }
+
+    @RunWith( ReportOneTestAtRuntimeRunner.class )
+    public static class TestWithoutPrecalculatedChildren {}
+
+    public static class ReportOneTestAtRuntimeRunner
+            extends ParentRunner
+    {
+        private final Class<?> testClass;
+        private final Description suiteDescription;
+        private final Description myTestMethodDescr;
+
+        @SuppressWarnings( "unchecked" )
+        public ReportOneTestAtRuntimeRunner( Class<?> testClass ) throws InitializationError
+        {
+            super( Object.class );
+            this.testClass = testClass;
+            suiteDescription = Description.createSuiteDescription( testClass );
+            myTestMethodDescr = Description.createTestDescription( testClass, "my_test" );
+//            suiteDescription.addChild(myTestMethodDescr); // let it be not known at start time
+        }
+
+        protected List getChildren()
+        {
+            throw new UnsupportedOperationException( "workflow from ParentRunner not supported" );
+        }
+
+        protected Description describeChild( Object child )
+        {
+            throw new UnsupportedOperationException( "workflow from ParentRunner not supported" );
+        }
+
+        protected void runChild( Object child, RunNotifier notifier )
+        {
+            throw new UnsupportedOperationException( "workflow from ParentRunner not supported" );
+        }
+
+        public Description getDescription()
+        {
+            return suiteDescription;
+        }
+
+        public void run( RunNotifier notifier )
+        {
+            notifier.fireTestStarted( myTestMethodDescr );
+            notifier.fireTestFinished( Description.createTestDescription( testClass, "my_test" ) );
+        }
     }
 
     @NotThreadSafe
@@ -828,7 +934,7 @@ public class ParallelComputerBuilderTest
             throws InterruptedException
         {
             System.out.println( new Date() + " BEG: beforeClass" );
-            TimeUnit.SECONDS.sleep( 1 );
+            sleepSeconds( 1 );
             System.out.println( new Date() + " END: beforeClass" );
         }
 
@@ -837,7 +943,7 @@ public class ParallelComputerBuilderTest
             throws InterruptedException
         {
             System.out.println( new Date() + " BEG: before" );
-            TimeUnit.SECONDS.sleep( 1 );
+            sleepSeconds( 1 );
             System.out.println( new Date() + " END: before" );
         }
 
@@ -846,7 +952,7 @@ public class ParallelComputerBuilderTest
             throws InterruptedException
         {
             System.out.println( new Date() + " BEG: test" );
-            TimeUnit.SECONDS.sleep( 1 );
+            sleepSeconds( 1 );
             System.out.println( new Date() + " END: test" );
         }
 
@@ -855,7 +961,7 @@ public class ParallelComputerBuilderTest
             throws InterruptedException
         {
             System.out.println( new Date() + " BEG: after" );
-            TimeUnit.SECONDS.sleep( 1 );
+            sleepSeconds( 1 );
             System.out.println( new Date() + " END: after" );
         }
 
@@ -864,8 +970,19 @@ public class ParallelComputerBuilderTest
             throws InterruptedException
         {
             System.out.println( new Date() + " BEG: afterClass" );
-            TimeUnit.SECONDS.sleep( 1 );
+            sleepSeconds( 1 );
             System.out.println( new Date() + " END: afterClass" );
         }
+    }
+
+    private static long systemMillis()
+    {
+        return TimeUnit.NANOSECONDS.toMillis( System.nanoTime() );
+    }
+
+    private static void sleepSeconds( int seconds )
+            throws InterruptedException
+    {
+        TimeUnit.SECONDS.sleep( seconds );
     }
 }

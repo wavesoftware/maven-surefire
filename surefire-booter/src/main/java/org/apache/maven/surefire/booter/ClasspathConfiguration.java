@@ -19,97 +19,74 @@ package org.apache.maven.surefire.booter;
  * under the License.
  */
 
+import javax.annotation.Nonnull;
+
+import static org.apache.maven.surefire.booter.Classpath.emptyClasspath;
+
 /**
  * Represents the classpaths for the BooterConfiguration.
- * <p/>
+ * <br>
  *
  * @author Jason van Zyl
  * @author Emmanuel Venisse
  * @author Kristian Rosenvold
  */
-public class ClasspathConfiguration
+public class ClasspathConfiguration extends AbstractPathConfiguration
 {
-    public static final String CHILD_DELEGATION = "childDelegation";
-
-    public static final String ENABLE_ASSERTIONS = "enableAssertions";
-
-    public static final String CLASSPATH = "classPathUrl.";
-
-    public static final String SUREFIRE_CLASSPATH = "surefireClassPathUrl.";
-
-    private final Classpath classpathUrls;
-
-    private final Classpath surefireClasspathUrls;
+    private final Classpath testClasspathUrls;
 
     /**
      * The surefire classpath to use when invoking in-process with the plugin
      */
     private final Classpath inprocClasspath;
 
-    /**
-     * Whether to enable assertions or not (can be affected by the fork arguments, and the ability to do so based on the
-     * JVM).
-     */
-    private final boolean enableAssertions;
-
-    // todo: @deprecated because the IsolatedClassLoader is really isolated - no parent.
-    private final boolean childDelegation;
-
     public ClasspathConfiguration( boolean enableAssertions, boolean childDelegation )
     {
-        this( Classpath.emptyClasspath(), Classpath.emptyClasspath(), Classpath.emptyClasspath(), enableAssertions,
-              childDelegation );
+        this( emptyClasspath(), emptyClasspath(), emptyClasspath(), enableAssertions, childDelegation );
     }
 
-    ClasspathConfiguration( PropertiesWrapper properties )
+    ClasspathConfiguration( @Nonnull PropertiesWrapper properties )
     {
-        this( properties.getClasspath( CLASSPATH ), properties.getClasspath( SUREFIRE_CLASSPATH ),
-              Classpath.emptyClasspath(),
+        this( properties.getClasspath( CLASSPATH ), properties.getClasspath( SUREFIRE_CLASSPATH ), emptyClasspath(),
               properties.getBooleanProperty( ENABLE_ASSERTIONS ), properties.getBooleanProperty( CHILD_DELEGATION ) );
     }
 
-    public ClasspathConfiguration( Classpath testClasspath, Classpath surefireClassPathUrls, Classpath inprocClasspath,
-                                   boolean enableAssertions, boolean childDelegation )
+    public ClasspathConfiguration( @Nonnull Classpath testClasspathUrls, @Nonnull Classpath surefireClassPathUrls,
+                                   @Nonnull Classpath inprocClasspath, boolean enableAssertions,
+                                   boolean childDelegation )
     {
-        this.enableAssertions = enableAssertions;
-        this.childDelegation = childDelegation;
+        super( surefireClassPathUrls, enableAssertions, childDelegation );
+        this.testClasspathUrls = testClasspathUrls;
         this.inprocClasspath = inprocClasspath;
-        this.classpathUrls = testClasspath;
-        this.surefireClasspathUrls = surefireClassPathUrls;
     }
 
-    public ClassLoader createMergedClassLoader()
-        throws SurefireExecutionException
+    @Override
+    protected Classpath getInprocClasspath()
     {
-        return Classpath.join( inprocClasspath, classpathUrls )
-            .createClassLoader( null, this.childDelegation, enableAssertions, "test" );
+        return inprocClasspath;
     }
 
-    public Classpath getProviderClasspath()
+    public Classpath getTestClasspath()
     {
-        return surefireClasspathUrls;
+        return testClasspathUrls;
     }
 
-
-        public Classpath getTestClasspath()
+    @Override
+    public final boolean isModularPathConfig()
     {
-        return classpathUrls;
+        return !isClassPathConfig();
+    }
+
+    @Override
+    public final boolean isClassPathConfig()
+    {
+        return true;
     }
 
     public void trickClassPathWhenManifestOnlyClasspath()
         throws SurefireExecutionException
     {
-            System.setProperty( "surefire.real.class.path", System.getProperty( "java.class.path" ) );
-            getTestClasspath().writeToSystemProperty( "java.class.path" );
-    }
-
-    public boolean isEnableAssertions()
-    {
-        return enableAssertions;
-    }
-
-    public boolean isChildDelegation()
-    {
-        return childDelegation;
+        System.setProperty( "surefire.real.class.path", System.getProperty( "java.class.path" ) );
+        getTestClasspath().writeToSystemProperty( "java.class.path" );
     }
 }

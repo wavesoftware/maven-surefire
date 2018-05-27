@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,10 +31,13 @@ import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.reporting.MavenReportException;
 import org.apache.maven.shared.utils.StringUtils;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.xml.sax.SAXException;
+
+import static java.util.Collections.singletonList;
 
 /**
  *
@@ -53,12 +55,15 @@ public final class SurefireReportParser
 
     private final NumberFormat numberFormat;
 
+    private final ConsoleLogger consoleLogger;
+
     private List<File> reportsDirectories;
 
-    public SurefireReportParser( List<File> reportsDirectoriesFiles, Locale locale )
+    public SurefireReportParser( List<File> reportsDirectories, Locale locale, ConsoleLogger consoleLogger )
     {
-        reportsDirectories = reportsDirectoriesFiles;
+        this.reportsDirectories = reportsDirectories;
         numberFormat = NumberFormat.getInstance( locale );
+        this.consoleLogger = consoleLogger;
     }
 
     public List<ReportTestSuite> parseXMLReportFiles()
@@ -75,7 +80,7 @@ public final class SurefireReportParser
                 }
             }
         }
-        final TestSuiteXmlParser parser = new TestSuiteXmlParser();
+        final TestSuiteXmlParser parser = new TestSuiteXmlParser( consoleLogger );
         for ( File aXmlReportFileList : xmlReportFiles )
         {
             try
@@ -161,7 +166,7 @@ public final class SurefireReportParser
 
     public void setReportsDirectory( File reportsDirectory )
     {
-        reportsDirectories = Collections.singletonList( reportsDirectory );
+        reportsDirectories = singletonList( reportsDirectory );
     }
 
     public NumberFormat getNumberFormat()
@@ -199,24 +204,20 @@ public final class SurefireReportParser
 
     public List<ReportTestCase> getFailureDetails( List<ReportTestSuite> testSuites )
     {
-        List<ReportTestCase> failureDetailList = new ArrayList<ReportTestCase>();
+        List<ReportTestCase> failureDetails = new ArrayList<ReportTestCase>();
 
         for ( ReportTestSuite suite : testSuites )
         {
-            List<ReportTestCase> testCases = suite.getTestCases();
-            if ( testCases != null )
+            for ( ReportTestCase tCase : suite.getTestCases() )
             {
-                for ( ReportTestCase tCase : testCases )
+                if ( !tCase.isSuccessful() )
                 {
-                    if ( tCase.hasFailure() )
-                    {
-                        failureDetailList.add( tCase );
-                    }
+                    failureDetails.add( tCase );
                 }
             }
         }
 
-        return failureDetailList;
+        return failureDetails;
     }
 
     /**

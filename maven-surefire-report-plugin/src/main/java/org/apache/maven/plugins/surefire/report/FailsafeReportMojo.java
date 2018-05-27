@@ -19,40 +19,40 @@ package org.apache.maven.plugins.surefire.report;
  * under the License.
  */
 
-import java.io.File;
-import java.util.Locale;
-import java.util.ResourceBundle;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
+import java.io.File;
+import java.util.Locale;
+import java.util.ResourceBundle;
+
+import static org.apache.maven.shared.utils.StringUtils.isEmpty;
 
 /**
  * Creates a nicely formatted Failsafe Test Report in html format.
  * This goal does not run the tests, it only builds the reports.
- * See <a href="http://jira.codehaus.org/browse/SUREFIRE-257">http://jira.codehaus.org/browse/SUREFIRE-257</a>
+ * See <a href="https://issues.apache.org/jira/browse/SUREFIRE-257">
+ *     https://issues.apache.org/jira/browse/SUREFIRE-257</a>
  *
  * @author Stephen Connolly
  * @since 2.10
  */
 @Mojo( name = "failsafe-report-only" )
+@SuppressWarnings( "unused" )
 public class FailsafeReportMojo
     extends AbstractSurefireReportMojo
 {
 
     /**
      * The filename to use for the report.
-     *
-     * @noinspection UnusedDeclaration
      */
     @Parameter( defaultValue = "failsafe-report", property = "outputName", required = true )
     private String outputName;
 
     /**
      * If set to true the failsafe report will be generated even when there are no failsafe result files.
-     * Defaults to <code>false</code> to preserve legacy behaviour pre 2.10
-     *
-     * @noinspection UnusedDeclaration
+     * Defaults to {@code false} to preserve legacy behaviour pre 2.10.
      * @since 2.11
      */
     @Parameter( defaultValue = "false", property = "alwaysGenerateFailsafeReport" )
@@ -60,57 +60,100 @@ public class FailsafeReportMojo
 
     /**
      * If set to true the failsafe report generation will be skipped.
-     *
-     * @noinspection UnusedDeclaration
      * @since 2.11
      */
     @Parameter( defaultValue = "false", property = "skipFailsafeReport" )
     private boolean skipFailsafeReport;
 
+    /**
+     * A custom title of the report for the menu and the project reports page.
+     * @since 2.21.0
+     */
+    @Parameter( defaultValue = "", property = "failsafe.report.title" )
+    private String title;
+
+    /**
+     * A custom description for the project reports page.
+     * @since 2.21.0
+     */
+    @Parameter( defaultValue = "", property = "failsafe.report.description" )
+    private String description;
+
+    @Override
     protected File getSurefireReportsDirectory( MavenProject subProject )
     {
         String buildDir = subProject.getBuild().getDirectory();
         return new File( buildDir + "/failsafe-reports" );
     }
 
+    @Override
     public String getOutputName()
     {
         return outputName;
     }
 
+    @Override
+    protected LocalizedProperties getBundle( Locale locale, ClassLoader resourceBundleClassLoader )
+    {
+        ResourceBundle bundle = ResourceBundle.getBundle( "surefire-report", locale, resourceBundleClassLoader );
+        return new LocalizedProperties( bundle )
+        {
+            @Override
+            public String getReportName()
+            {
+                return isEmpty( FailsafeReportMojo.this.getTitle() )
+                        ? toLocalizedValue( "report.failsafe.name" ) : FailsafeReportMojo.this.getTitle();
+            }
+
+            @Override
+            public String getReportDescription()
+            {
+                return isEmpty( FailsafeReportMojo.this.getDescription() )
+                        ? toLocalizedValue( "report.failsafe.description" ) : FailsafeReportMojo.this.getDescription();
+            }
+
+            @Override
+            public String getReportHeader()
+            {
+                return isEmpty( FailsafeReportMojo.this.getTitle() )
+                        ? toLocalizedValue( "report.failsafe.header" ) : FailsafeReportMojo.this.getTitle();
+            }
+        };
+    }
+
+    @Override
     protected boolean isSkipped()
     {
         return skipFailsafeReport;
     }
 
+    @Override
     protected boolean isGeneratedWhenNoResults()
     {
         return alwaysGenerateFailsafeReport;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public String getName( Locale locale )
+    @Override
+    public void setTitle( String title )
     {
-        return getBundle( locale ).getString( "report.failsafe.name" );
+        this.title = title;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public String getDescription( Locale locale )
+    @Override
+    public String getTitle()
     {
-        return getBundle( locale ).getString( "report.failsafe.description" );
+        return title;
     }
 
-
-    /*
-    * This is currently a copy of the getBundle() method of the AbstractSurefireReportMojo class,
-    * cause the failsafe report only different in two names for the bundles.
-    */
-    private ResourceBundle getBundle( Locale locale )
+    @Override
+    public void setDescription( String description )
     {
-        return ResourceBundle.getBundle( "surefire-report", locale, this.getClass().getClassLoader() );
+        this.description = description;
+    }
+
+    @Override
+    public String getDescription()
+    {
+        return description;
     }
 }

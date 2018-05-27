@@ -20,6 +20,7 @@ package org.apache.maven.surefire.util;
  */
 
 
+import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,15 +45,18 @@ public final class RunOrderMapper
      * @param values The runorder string value
      * @return An iterable of RunOrder objects
      */
-    public RunOrders fromString( String values )
+    public RunOrders fromString( @Nullable String values )
     {
         List<RunOrderWithArguments> result = new ArrayList<RunOrderWithArguments>();
-        StringTokenizer stringTokenizer = new StringTokenizer( values, RUN_ORDERS_DELIMITER);
-        while ( stringTokenizer.hasMoreTokens() )
+        if ( values != null )
         {
-            String token = stringTokenizer.nextToken();
-            RunOrderWithArguments order = readOneFromString( token );
-            result.add( order );
+            StringTokenizer stringTokenizer = new StringTokenizer( values, RUN_ORDERS_DELIMITER );
+            while ( stringTokenizer.hasMoreTokens() )
+            {
+                String token = stringTokenizer.nextToken();
+                RunOrderWithArguments order = readOneFromString( token );
+                result.add( order );
+            }
         }
         return new RunOrders( result );
     }
@@ -66,7 +70,7 @@ public final class RunOrderMapper
     public String asString( RunOrders runOrders )
     {
         StringBuilder sb = new StringBuilder();
-        for (RunOrderWithArguments order : runOrders.getIterable())
+        for ( RunOrderWithArguments order : runOrders.getIterable() )
         {
             sb.append( asString( order ) );
             sb.append( RUN_ORDERS_DELIMITER );
@@ -106,7 +110,7 @@ public final class RunOrderMapper
         String[] splited = token.split( ARGUMENTS_DELIMITER );
         String name = splited[0];
         RunOrder runOrder = RunOrder.valueOf( name );
-        List<String> asList = Arrays.asList( splited );
+        List<String> asList = new ArrayList<String>( Arrays.asList( splited ) );
         asList.remove( 0 );
         RunOrderArguments arguments = new RunOrderArguments( asList );
         return new RunOrderWithArguments( runOrder, arguments );

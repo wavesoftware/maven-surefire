@@ -21,7 +21,8 @@ package org.apache.maven.plugin.surefire.report;
 
 import junit.framework.TestCase;
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
-import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
+import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.maven.surefire.report.RunStatistics;
 import org.apache.maven.surefire.report.SafeThrowable;
 import org.apache.maven.surefire.report.StackTraceWriter;
@@ -30,27 +31,24 @@ import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.surefire.util.RunOrders;
 
-import javax.annotation.Nonnull;
 import java.io.File;
-import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+import static java.util.Arrays.asList;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.error;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.failure;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.flake;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.skipped;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.success;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.unknown;
+import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.getTestResultType;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class DefaultReporterFactoryTest
     extends TestCase
 {
-
     private final static String TEST_ONE = "testOne";
 
     private final static String TEST_TWO = "testTwo";
@@ -72,10 +70,16 @@ public class DefaultReporterFactoryTest
                 null,
                 null
         );
-        StartupReportConfiguration reportConfig = new StartupReportConfiguration( true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",
-                false, 1, null, StartupReportConfiguration.DEFAULT_PLUGIN_NAME, runOrderParameters );
+        MessageUtils.setColorEnabled( false );
+        File reportsDirectory = new File("target");
+        StartupReportConfiguration reportConfig =
+                new StartupReportConfiguration( true, true, "PLAIN", false, false, reportsDirectory, false, null,
+                                                      new File( reportsDirectory, "TESTHASH" ), false, 1, null, null,
+                                                      StartupReportConfiguration.DEFAULT_PLUGIN_NAME, runOrderParameters );
 
-        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig );
+        DummyTestReporter reporter = new DummyTestReporter();
+
+        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig, reporter );
 
         // First run, four tests failed and one passed
         List<TestMethodStats> firstRunStats = new ArrayList<TestMethodStats>();
@@ -125,25 +129,24 @@ public class DefaultReporterFactoryTest
         assertEquals( 0, mergedStatistics.getSkipped() );
 
         // Now test the result will be printed out correctly
-        DummyTestReporter reporter = new DummyTestReporter();
-        factory.printTestFailures( reporter, DefaultReporterFactory.TestResultType.flake );
+        factory.printTestFailures( flake );
         String[] expectedFlakeOutput =
-            { "Flaked tests: ", TEST_FOUR, "  Run 1: " + ASSERTION_FAIL, "  Run 2: PASS", "", TEST_ONE,
+            { "Flakes: ", TEST_FOUR, "  Run 1: " + ASSERTION_FAIL, "  Run 2: PASS", "", TEST_ONE,
                 "  Run 1: " + ERROR, "  Run 2: " + ASSERTION_FAIL, "  Run 3: PASS", "", TEST_TWO, "  Run 1: " + ERROR,
                 "  Run 2: PASS", "" };
-        assertEquals( Arrays.asList( expectedFlakeOutput ), reporter.getMessages() );
+        assertEquals( asList( expectedFlakeOutput ), reporter.getMessages() );
 
-        reporter = new DummyTestReporter();
-        factory.printTestFailures( reporter, DefaultReporterFactory.TestResultType.error );
+        reporter.reset();
+        factory.printTestFailures( error );
         String[] expectedFailureOutput =
-            { "Tests in error: ", TEST_THREE, "  Run 1: " + ASSERTION_FAIL, "  Run 2: " + ERROR, "  Run 3: " + ERROR, ""
+            { "Errors: ", TEST_THREE, "  Run 1: " + ASSERTION_FAIL, "  Run 2: " + ERROR, "  Run 3: " + ERROR, ""
             };
-        assertEquals( Arrays.asList( expectedFailureOutput ), reporter.getMessages() );
+        assertEquals( asList( expectedFailureOutput ), reporter.getMessages() );
 
-        reporter = new DummyTestReporter();
-        factory.printTestFailures( reporter, DefaultReporterFactory.TestResultType.failure );
+        reporter.reset();
+        factory.printTestFailures( failure );
         String[] expectedErrorOutput = { };
-        assertEquals( Arrays.asList( expectedErrorOutput ), reporter.getMessages() );
+        assertEquals( asList( expectedErrorOutput ), reporter.getMessages() );
     }
 
     public void testRandomOrderMessages()
@@ -157,85 +160,139 @@ public class DefaultReporterFactoryTest
                 null
         );
         String pluginName = StartupReportConfiguration.DEFAULT_PLUGIN_NAME;
-        MockedStartupReportConfiguration reportConfig = new MockedStartupReportConfiguration(
-                true, true, "PLAIN", false, false, new File("target"), false, null, "TESTHASH",
-                false, 1, null, pluginName, runOrderParameters );
-        PrintStream stdOut = mock( PrintStream.class );
-        reportConfig.setSystemOut( stdOut );
+        StartupReportConfiguration reportConfig = new StartupReportConfiguration(
+                true, true, "PLAIN", false,
+                false, new File("target"), false,
+                null, new File("."), false,
+                1, null, "UTF-8",
+                pluginName, runOrderParameters );
+        DummyTestReporter consoleLogger = new DummyTestReporter();
 
-        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig );
+        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig, consoleLogger );
         String expectedMessage = String.format( "Tests are randomly ordered. Re-run the same execution " +
-                "order with -D%s.randomSeed=%s", pluginName, seed );
+                "order with -D%s.runOrder=random:%s", pluginName, seed );
 
         // when
         factory.runStarting();
 
         // then
-        verify( stdOut ).println( " T E S T S" );
-        verify( stdOut ).println( expectedMessage );
+        List<String> messages = consoleLogger.getMessages();
+        assertTrue( messages.contains( " T E S T S" ) );
+        assertTrue( messages.contains( expectedMessage ) );
     }
 
-    static class DummyTestReporter
-        extends DefaultDirectConsoleReporter
+    static final class DummyTestReporter implements ConsoleLogger
     {
-
         private final List<String> messages = new ArrayList<String>();
 
-        public DummyTestReporter()
+        @Override
+        public boolean isDebugEnabled()
         {
-            super( System.out );
+            return true;
         }
 
         @Override
-        public void info( String msg )
+        public void debug( String message )
         {
-            messages.add( msg );
+            messages.add( message );
         }
 
-        public List<String> getMessages()
+        @Override
+        public boolean isInfoEnabled()
+        {
+            return true;
+        }
+
+        @Override
+        public void info( String message )
+        {
+            messages.add( message );
+        }
+
+        @Override
+        public boolean isWarnEnabled()
+        {
+            return true;
+        }
+
+        @Override
+        public void warning( String message )
+        {
+            messages.add( message );
+        }
+
+        @Override
+        public boolean isErrorEnabled()
+        {
+            return true;
+        }
+
+        @Override
+        public void error( String message )
+        {
+            messages.add( message );
+        }
+
+        @Override
+        public void error( String message, Throwable t )
+        {
+            messages.add( message );
+        }
+
+        @Override
+        public void error( Throwable t )
+        {
+        }
+
+        List<String> getMessages()
         {
             return messages;
+        }
+
+        void reset()
+        {
+            messages.clear();
         }
     }
 
     public void testGetTestResultType()
     {
         List<ReportEntryType> emptyList = new ArrayList<ReportEntryType>();
-        assertEquals( unknown, DefaultReporterFactory.getTestResultType( emptyList, 1 ) );
+        assertEquals( unknown, getTestResultType( emptyList, 1 ) );
 
         List<ReportEntryType> successList = new ArrayList<ReportEntryType>();
         successList.add( ReportEntryType.SUCCESS );
         successList.add( ReportEntryType.SUCCESS );
-        assertEquals( success, DefaultReporterFactory.getTestResultType( successList, 1 ) );
+        assertEquals( success, getTestResultType( successList, 1 ) );
 
         List<ReportEntryType> failureErrorList = new ArrayList<ReportEntryType>();
         failureErrorList.add( ReportEntryType.FAILURE );
         failureErrorList.add( ReportEntryType.ERROR );
-        assertEquals( error, DefaultReporterFactory.getTestResultType( failureErrorList, 1 ) );
+        assertEquals( error, getTestResultType( failureErrorList, 1 ) );
 
         List<ReportEntryType> errorFailureList = new ArrayList<ReportEntryType>();
         errorFailureList.add( ReportEntryType.ERROR );
         errorFailureList.add( ReportEntryType.FAILURE );
-        assertEquals( error, DefaultReporterFactory.getTestResultType( errorFailureList, 1 ) );
+        assertEquals( error, getTestResultType( errorFailureList, 1 ) );
 
         List<ReportEntryType> flakeList = new ArrayList<ReportEntryType>();
         flakeList.add( ReportEntryType.SUCCESS );
         flakeList.add( ReportEntryType.FAILURE );
-        assertEquals( flake, DefaultReporterFactory.getTestResultType( flakeList, 1 ) );
+        assertEquals( flake, getTestResultType( flakeList, 1 ) );
 
-        assertEquals( failure, DefaultReporterFactory.getTestResultType( flakeList, 0 ) );
+        assertEquals( failure, getTestResultType( flakeList, 0 ) );
 
         flakeList = new ArrayList<ReportEntryType>();
         flakeList.add( ReportEntryType.ERROR );
         flakeList.add( ReportEntryType.SUCCESS );
         flakeList.add( ReportEntryType.FAILURE );
-        assertEquals( flake, DefaultReporterFactory.getTestResultType( flakeList, 1 ) );
+        assertEquals( flake, getTestResultType( flakeList, 1 ) );
 
-        assertEquals( error, DefaultReporterFactory.getTestResultType( flakeList, 0 ) );
+        assertEquals( error, getTestResultType( flakeList, 0 ) );
 
         List<ReportEntryType> skippedList = new ArrayList<ReportEntryType>();
         skippedList.add( ReportEntryType.SKIPPED );
-        assertEquals( skipped, DefaultReporterFactory.getTestResultType( skippedList, 1 ) );
+        assertEquals( skipped, getTestResultType( skippedList, 1 ) );
     }
 
     static class DummyStackTraceWriter
@@ -249,45 +306,28 @@ public class DefaultReporterFactoryTest
             this.stackTrace = stackTrace;
         }
 
+        @Override
         public String writeTraceToString()
         {
             return "";
         }
 
+        @Override
         public String writeTrimmedTraceToString()
         {
             return "";
         }
 
+        @Override
         public String smartTrimmedStackTrace()
         {
             return stackTrace;
         }
 
+        @Override
         public SafeThrowable getThrowable()
         {
             return null;
         }
-    }
-
-    private static final class MockedStartupReportConfiguration extends StartupReportConfiguration {
-
-        public MockedStartupReportConfiguration( boolean useFile, boolean printSummary, String reportFormat,
-                                                 boolean redirectTestOutputToFile, boolean disableXmlReport,
-                                                 @Nonnull File reportsDirectory, boolean trimStackTrace,
-                                                 String reportNameSuffix, String configurationHash,
-                                                 boolean requiresRunHistory, int rerunFailingTestsCount,
-                                                 String xsdSchemaLocation, String pluginName,
-                                                 RunOrderParameters runOrderParameters )
-        {
-            super( useFile, printSummary, reportFormat, redirectTestOutputToFile, disableXmlReport,
-                    reportsDirectory, trimStackTrace, reportNameSuffix, configurationHash, requiresRunHistory,
-                    rerunFailingTestsCount, xsdSchemaLocation, pluginName, runOrderParameters );
-        }
-
-         protected void setSystemOut( PrintStream systemOut )
-         {
-             originalSystemOut = systemOut;
-         }
     }
 }

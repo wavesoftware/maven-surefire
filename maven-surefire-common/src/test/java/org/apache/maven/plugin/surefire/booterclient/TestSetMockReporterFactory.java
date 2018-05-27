@@ -20,8 +20,14 @@ package org.apache.maven.plugin.surefire.booterclient;
  */
 
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
+import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.surefire.report.RunListener;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
+
+import java.io.File;
 
 /**
  * Internal tests use only.
@@ -33,11 +39,45 @@ public class TestSetMockReporterFactory
 {
     public TestSetMockReporterFactory()
     {
-        super( StartupReportConfiguration.defaultValue() );
+        super( defaultValue(), new NullConsoleLogger() );
     }
 
+    @Override
     public RunListener createReporter()
     {
         return new MockReporter();
+    }
+
+
+    /**
+     * For testing purposes only.
+     *
+     * @return StartupReportConfiguration fo testing purposes
+     */
+    private static StartupReportConfiguration defaultValue()
+    {
+        File target = new File( "./target" );
+        File statisticsFile = new File( target, "TESTHASH" );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.DEFAULT ),
+                null, statisticsFile
+        );
+        return new StartupReportConfiguration(
+                true,
+                true,
+                "PLAIN",
+                false,
+                false,
+                target,
+                false,
+                null,
+                statisticsFile,
+                false,
+                0,
+                null,
+                null,
+                "surefire",
+                runOrderParameters
+        );
     }
 }

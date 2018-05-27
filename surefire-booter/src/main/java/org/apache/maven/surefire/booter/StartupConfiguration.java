@@ -19,6 +19,8 @@ package org.apache.maven.surefire.booter;
  * under the License.
  */
 
+import javax.annotation.Nonnull;
+
 /**
  * Configuration that is used by the SurefireStarter but does not make it into the provider itself.
  *
@@ -26,21 +28,17 @@ package org.apache.maven.surefire.booter;
  */
 public class StartupConfiguration
 {
-    private final String providerClassName;
-
-    private final ClasspathConfiguration classpathConfiguration;
-
-    private final ClassLoaderConfiguration classLoaderConfiguration;
-
-    private final boolean isForkRequested;
-
-    private final boolean isInForkedVm;
-
     private static final String SUREFIRE_TEST_CLASSPATH = "surefire.test.class.path";
 
+    private final String providerClassName;
+    private final AbstractPathConfiguration classpathConfiguration;
+    private final ClassLoaderConfiguration classLoaderConfiguration;
+    private final boolean isForkRequested;
+    private final boolean isInForkedVm;
 
-    public StartupConfiguration( String providerClassName, ClasspathConfiguration classpathConfiguration,
-                                 ClassLoaderConfiguration classLoaderConfiguration, boolean isForkRequested,
+    public StartupConfiguration( @Nonnull String providerClassName,
+                                 @Nonnull AbstractPathConfiguration classpathConfiguration,
+                                 @Nonnull ClassLoaderConfiguration classLoaderConfiguration, boolean isForkRequested,
                                  boolean inForkedVm )
     {
         this.classpathConfiguration = classpathConfiguration;
@@ -63,11 +61,12 @@ public class StartupConfiguration
                                          true );
     }
 
-    public ClasspathConfiguration getClasspathConfiguration()
+    public AbstractPathConfiguration getClasspathConfiguration()
     {
         return classpathConfiguration;
     }
 
+    @Deprecated
     public boolean useSystemClassLoader()
     {
         // todo; I am not totally convinced this logic is as simple as it could be
@@ -86,17 +85,13 @@ public class StartupConfiguration
 
     public String getActualClassName()
     {
-        if ( isProviderMainClass() )
-        {
-            return stripEnd( providerClassName, "#main" );
-        }
-        return providerClassName;
+        return isProviderMainClass() ? stripEnd( providerClassName, "#main" ) : providerClassName;
     }
 
     /**
      * <p>Strip any of a supplied String from the end of a String.</p>
-     * <p/>
-     * <p>If the strip String is <code>null</code>, whitespace is
+     * <br>
+     * <p>If the strip String is {@code null}, whitespace is
      * stripped.</p>
      *
      * @param str   the String to remove characters from
@@ -120,7 +115,7 @@ public class StartupConfiguration
         }
         else
         {
-            while ( ( end != 0 ) && ( strip.indexOf( str.charAt( end - 1 ) ) != -1 ) )
+            while ( end != 0 && strip.indexOf( str.charAt( end - 1 ) ) != -1 )
             {
                 end--;
             }
@@ -140,8 +135,6 @@ public class StartupConfiguration
 
     public void writeSurefireTestClasspathProperty()
     {
-        ClasspathConfiguration classpathConfiguration = getClasspathConfiguration();
-        classpathConfiguration.getTestClasspath().writeToSystemProperty( SUREFIRE_TEST_CLASSPATH );
+        getClasspathConfiguration().getTestClasspath().writeToSystemProperty( SUREFIRE_TEST_CLASSPATH );
     }
-
 }

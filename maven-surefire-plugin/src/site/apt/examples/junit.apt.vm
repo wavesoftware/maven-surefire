@@ -179,6 +179,7 @@ else
           <name>listener</name>
           <value>com.mycompany.MyResultListener,com.mycompany.MyResultListener2</value>
         </property>
+      </properties>
     </configuration>
   </plugin>
 [...]
@@ -296,6 +297,9 @@ else
 +---+
 
   The <<<@Category>>> annotation can also be applied at class-level.
+  
+  Multiple categories can be specified by comma-delimiting them in the <<<groups>>> parameter in which case tests annotated with
+  any of the categories will be executed.
 	
   For more information on JUnit, see the {{{http://www.junit.org}JUnit web site}}.
 

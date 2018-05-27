@@ -20,6 +20,8 @@ package org.apache.maven.plugin.surefire;
  */
 
 import junit.framework.TestCase;
+import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
+import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.shared.utils.io.FileUtils;
 import org.apache.maven.surefire.testset.RunOrderParameters;
@@ -54,11 +56,18 @@ public class CommonReflectorTest extends TestCase
     {
         // given
         CommonReflector commonReflector = new CommonReflector( this.getClass().getClassLoader() );
+        RunOrders runOrders = new RunOrders( RunOrder.DEFAULT );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                runOrders, null, null
+        );
+        ConsoleLogger consoleLogger = new NullConsoleLogger();
         StartupReportConfiguration startupReportConfiguration = new StartupReportConfiguration(
-                true, true, null, false, false, tempDir, false, null, null, false, 0, null, null, null
+                true, true, null, false, false, tempDir, false, null, null, false, 0, null, null, null, runOrderParameters
         );
         // when
-        Object object = commonReflector.createReportingReporterFactory( startupReportConfiguration );
+        Object object = commonReflector.createReportingReporterFactory(
+                startupReportConfiguration, consoleLogger
+        );
 
         // then
         assertTrue( "object is instance of DefaultReporterFactory", object instanceof DefaultReporterFactory );
@@ -73,12 +82,15 @@ public class CommonReflectorTest extends TestCase
         RunOrderParameters runOrderParameters = new RunOrderParameters(
                 new RunOrders( RunOrder.RANDOM ), randomizer, null
         );
+        ConsoleLogger consoleLogger = new NullConsoleLogger();
         StartupReportConfiguration startupReportConfiguration = new StartupReportConfiguration(
-                true, true, null, false, false, tempDir, false, null, null, false, 0, null, null,
+                true, true, null, false, false, tempDir, false, null, null, false, 0, null, "UTF-8", "failsafe",
                 runOrderParameters
         );
         // when
-        Object object = commonReflector.createReportingReporterFactory( startupReportConfiguration );
+        Object object = commonReflector.createReportingReporterFactory(
+                startupReportConfiguration, consoleLogger
+        );
 
         // then
         assertTrue( "object is instance of DefaultReporterFactory", object instanceof DefaultReporterFactory );
