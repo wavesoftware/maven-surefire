@@ -31,6 +31,8 @@
   <properties>
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
+    <forkMode>once</forkMode>
+    <surefire.runOrder>random</surefire.runOrder>
   </properties>
 
   <dependencies>
@@ -49,11 +51,14 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire.version}</version>
         <configuration>
-          <forkMode>once</forkMode>
-          <runOrder>random</runOrder>
+          <!--
+          Must be set as property due to bug: https://issues.apache.org/jira/browse/MNG-4979
+          Maven can't override configuration parameter from commandline if not
+          given through parameter.
+           -->
+          <forkMode>${forkMode}</forkMode>
+          <runOrder>${surefire.runOrder}</runOrder>
         </configuration>
-        <dependencies>
-        </dependencies>
       </plugin>
     </plugins>
   </build>

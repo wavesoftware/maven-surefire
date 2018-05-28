@@ -109,8 +109,17 @@ public class RunOrderIT
     @Test
     public void testRandomWithSetInPomAndSeed123456() throws VerificationException
     {
-        OutputValidator validator = unpack( "runOrder-random" )
-                .forkMode( getForkMode() )
+        OutputValidator validator = forkingMode( unpack( "runOrder-random" ) )
+                .executeTest()
+                .verifyErrorFree( 3 );
+
+        validator.assertThatLogLine(
+                containsString( "Tests are randomly ordered. Re-run the same "
+                        + "execution order with -Dsurefire.runOrder=random:" ),
+                equalTo( 2 )
+        );
+
+        validator = forkingMode( unpack( "runOrder-random" ) )
                 .runOrder( "random:123456" )
                 .executeTest()
                 .verifyErrorFree( 3 );
@@ -125,8 +134,7 @@ public class RunOrderIT
     @Test
     public void testNonExistingRunOrder()
     {
-        unpack()
-                .forkMode( getForkMode() )
+        forkingMode( unpack() )
                 .runOrder( "nonExistingRunOrder" )
                 .maven()
                 .withFailure()
@@ -138,16 +146,15 @@ public class RunOrderIT
 
     private OutputValidator executeWithRunOrder( String runOrder )
     {
-        return unpack()
-                .forkMode( getForkMode() )
+        return forkingMode( unpack() )
                 .runOrder( runOrder )
                 .executeTest()
                 .verifyErrorFree( 3 );
     }
 
-    protected String getForkMode()
+    protected SurefireLauncher forkingMode(SurefireLauncher launcher )
     {
-        return "once";
+        return launcher.forkMode( "once" );
     }
 
     private SurefireLauncher unpack()
