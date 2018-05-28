@@ -1,4 +1,4 @@
-package org.apache.maven.surefire.util.internal;
+package junit.runOrder;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,32 +19,13 @@ package org.apache.maven.surefire.util.internal;
  * under the License.
  */
 
-import org.junit.Test;
+import junit.framework.TestCase;
 
-import static org.junit.Assert.assertTrue;
-
-/**
- * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
- * @since 2016-04-02
- */
-public class UniqIdGeneratorTest
+public class TestA
+    extends TestCase
 {
-
-    @Test
-    public void testGenerateUniqId()
+    public void testA()
     {
-        // given
-        int lower = 5;
-        int upper = 10;
-        UniqIdGenerator uniqIdGenerator = new UniqIdGenerator( lower, upper );
-        int times = ( upper - lower ) * 10;
-        for ( int i = 0; i < times; i++ )
-        {
-            // when
-            long id = uniqIdGenerator.generateUniqId();
-            // then
-            assertTrue( id >= lower );
-            assertTrue( id < upper );
-        }
+        System.out.println( "TA" );
     }
 }

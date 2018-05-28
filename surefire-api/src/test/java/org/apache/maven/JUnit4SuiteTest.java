@@ -32,15 +32,19 @@ import org.apache.maven.surefire.testset.FundamentalFilterTest;
 import org.apache.maven.surefire.testset.ResolvedTestTest;
 import org.apache.maven.surefire.testset.TestListResolverTest;
 import org.apache.maven.surefire.util.DefaultDirectoryScannerTest;
+import org.apache.maven.surefire.util.RandomizerTest;
 import org.apache.maven.surefire.util.ReflectionUtilsTest;
 import org.apache.maven.surefire.util.RunOrderCalculatorTest;
+import org.apache.maven.surefire.util.RunOrderMapperTest;
 import org.apache.maven.surefire.util.RunOrderTest;
 import org.apache.maven.surefire.util.ScanResultTest;
 import org.apache.maven.surefire.util.TestsToRunTest;
 import org.apache.maven.surefire.util.UrlUtilsTest;
 import org.apache.maven.surefire.util.internal.ConcurrencyUtilsTest;
 import org.apache.maven.surefire.util.internal.ImmutableMapTest;
+import org.apache.maven.surefire.util.internal.RandomizerSerializerTest;
 import org.apache.maven.surefire.util.internal.StringUtilsTest;
+import org.apache.maven.surefire.util.internal.UniqIdGeneratorTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -62,6 +66,10 @@ import org.junit.runners.Suite;
     ConcurrencyUtilsTest.class,
     StringUtilsTest.class,
     DefaultDirectoryScannerTest.class,
+    RandomizerTest.class,
+    RandomizerSerializerTest.class,
+    RunOrderMapperTest.class,
+    UniqIdGeneratorTest.class,
     RunOrderCalculatorTest.class,
     RunOrderTest.class,
     ScanResultTest.class,

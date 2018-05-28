@@ -19,40 +19,33 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import junit.framework.TestCase;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.log.api.NullConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
-import org.apache.maven.shared.utils.io.FileUtils;
 import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.Randomizer;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.surefire.util.RunOrders;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
  * @since 2016-04-03
  */
-public class CommonReflectorTest extends TestCase
+public class CommonReflectorTest
 {
-    private File tempDir;
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-    @Override
-    protected void setUp() throws Exception
-    {
-        tempDir = createTempDirectory();
-    }
-
-    @Override
-    protected void tearDown() throws Exception
-    {
-        FileUtils.deleteDirectory( tempDir );
-    }
-
-    public void testCreateReportingReporterFactory()
+    @Test
+    public void testCreateReportingReporterFactory() throws IOException
     {
         // given
         CommonReflector commonReflector = new CommonReflector( this.getClass().getClassLoader() );
@@ -61,6 +54,7 @@ public class CommonReflectorTest extends TestCase
                 runOrders, null, null
         );
         ConsoleLogger consoleLogger = new NullConsoleLogger();
+        File tempDir = temporaryFolder.newFolder();
         StartupReportConfiguration startupReportConfiguration = new StartupReportConfiguration(
                 true, true, null, false, false, tempDir, false, null, null, false, 0, null, null, null, runOrderParameters
         );
@@ -70,10 +64,12 @@ public class CommonReflectorTest extends TestCase
         );
 
         // then
-        assertTrue( "object is instance of DefaultReporterFactory", object instanceof DefaultReporterFactory );
+        assertTrue( "object is instance of DefaultReporterFactory",
+                object instanceof DefaultReporterFactory );
     }
 
-    public void testCreateReportingReporterFactoryWithRunOrderParameters()
+    @Test
+    public void testCreateReportingReporterFactoryWithRunOrderParameters() throws IOException
     {
         // given
         CommonReflector commonReflector = new CommonReflector( this.getClass().getClassLoader() );
@@ -83,6 +79,7 @@ public class CommonReflectorTest extends TestCase
                 new RunOrders( RunOrder.RANDOM ), randomizer, null
         );
         ConsoleLogger consoleLogger = new NullConsoleLogger();
+        File tempDir = temporaryFolder.newFolder();
         StartupReportConfiguration startupReportConfiguration = new StartupReportConfiguration(
                 true, true, null, false, false, tempDir, false, null, null, false, 0, null, "UTF-8", "failsafe",
                 runOrderParameters
@@ -93,25 +90,7 @@ public class CommonReflectorTest extends TestCase
         );
 
         // then
-        assertTrue( "object is instance of DefaultReporterFactory", object instanceof DefaultReporterFactory );
-    }
-
-    private static File createTempDirectory() throws IOException
-    {
-        final File temp;
-
-        temp = File.createTempFile("temp", Long.toString(System.nanoTime()));
-
-        if(!(temp.delete()))
-        {
-            throw new IOException("Could not delete temp file: " + temp.getAbsolutePath());
-        }
-
-        if(!(temp.mkdir()))
-        {
-            throw new IOException("Could not create temp directory: " + temp.getAbsolutePath());
-        }
-
-        return (temp);
+        assertTrue( "object is instance of DefaultReporterFactory",
+                object instanceof DefaultReporterFactory );
     }
 }

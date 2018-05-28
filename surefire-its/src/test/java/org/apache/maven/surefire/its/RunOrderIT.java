@@ -19,13 +19,17 @@ package org.apache.maven.surefire.its;
  * under the License.
  */
 
-import java.io.IOException;
-import java.util.Calendar;
 import org.apache.maven.it.VerificationException;
 import org.apache.maven.surefire.its.fixture.OutputValidator;
 import org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase;
 import org.apache.maven.surefire.its.fixture.SurefireLauncher;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.Calendar;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 
 /**
  * Verifies the runOrder setting and its effect
@@ -38,6 +42,10 @@ public class RunOrderIT
     private static final String[] TESTS_IN_ALPHABETICAL_ORDER = { "TA", "TB", "TC" };
 
     private static final String[] TESTS_IN_REVERSE_ALPHABETICAL_ORDER = { "TC", "TB", "TA" };
+
+    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_123456 = { "TA", "TC", "TB" };
+
+    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_654321 = { "TB", "TC", "TA" };
 
     // testing random is left as an exercise to the reader. Patches welcome
 
@@ -75,16 +83,66 @@ public class RunOrderIT
     }
 
     @Test
-    public void testNonExistingRunOrder()
-        throws Exception
+    public void testRandomWithSeed123456() throws VerificationException
     {
-        unpack().forkMode( getForkMode() ).runOrder( "nonExistingRunOrder" ).maven().withFailure().executeTest().verifyTextInLog(
-            "There's no RunOrder with the name nonExistingRunOrder." );
+        OutputValidator validator = executeWithRunOrder( "random:123456" );
+        assertTestnamesAppearInSpecificOrder( validator, TESTS_IN_RANDOM_ORDER_WITH_SEED_123456 );
+        validator.assertThatLogLine(
+                containsString( "Tests are randomly ordered. Re-run the same "
+                        + "execution order with -Dsurefire.runOrder=random:123456" ),
+                equalTo( 2 )
+        );
+    }
+
+    @Test
+    public void testRandomWithSeed654321() throws VerificationException
+    {
+        OutputValidator validator = executeWithRunOrder( "random:654321" );
+        assertTestnamesAppearInSpecificOrder( validator, TESTS_IN_RANDOM_ORDER_WITH_SEED_654321 );
+        validator.assertThatLogLine(
+                containsString( "Tests are randomly ordered. Re-run the same "
+                        + "execution order with -Dsurefire.runOrder=random:654321" ),
+                equalTo( 2 )
+        );
+    }
+
+    @Test
+    public void testRandomWithSetInPomAndSeed123456() throws VerificationException
+    {
+        OutputValidator validator = unpack( "runOrder-random" )
+                .forkMode( getForkMode() )
+                .runOrder( "random:123456" )
+                .executeTest()
+                .verifyErrorFree( 3 );
+        assertTestnamesAppearInSpecificOrder( validator, TESTS_IN_RANDOM_ORDER_WITH_SEED_123456 );
+        validator.assertThatLogLine(
+                containsString( "Tests are randomly ordered. Re-run the same "
+                        + "execution order with -Dsurefire.runOrder=random:123456" ),
+                equalTo( 2 )
+        );
+    }
+
+    @Test
+    public void testNonExistingRunOrder()
+    {
+        unpack()
+                .forkMode( getForkMode() )
+                .runOrder( "nonExistingRunOrder" )
+                .maven()
+                .withFailure()
+                .executeTest()
+                .verifyTextInLog(
+                    "There's no RunOrder with the name nonExistingRunOrder."
+                );
     }
 
     private OutputValidator executeWithRunOrder( String runOrder )
     {
-        return unpack().forkMode( getForkMode() ).runOrder( runOrder ).executeTest().verifyErrorFree( 3 );
+        return unpack()
+                .forkMode( getForkMode() )
+                .runOrder( runOrder )
+                .executeTest()
+                .verifyErrorFree( 3 );
     }
 
     protected String getForkMode()
@@ -102,7 +160,10 @@ public class RunOrderIT
     {
         if ( !validator.stringsAppearInSpecificOrderInLog( testnames ) )
         {
-            throw new VerificationException( "Response does not contain expected item" );
+            throw new VerificationException(
+                    "Does not contain tests in sequence: "
+                            + Arrays.toString( testnames )
+            );
         }
     }
 }

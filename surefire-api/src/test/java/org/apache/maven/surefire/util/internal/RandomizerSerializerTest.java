@@ -19,20 +19,25 @@ package org.apache.maven.surefire.util.internal;
  * under the License.
  */
 
-import junit.framework.TestCase;
 import org.apache.maven.surefire.util.Randomizer;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
  * @since 2016-04-11
  */
-public class RandomizerSerializerTest extends TestCase
+public class RandomizerSerializerTest
 {
 
+    @Test
     public void testDeserialize()
     {
         // given
         String serialized = "\u001E\u0003123456";
+
         // when
         Randomizer randomizer = RandomizerSerializer.deserialize( serialized );
 
@@ -41,10 +46,12 @@ public class RandomizerSerializerTest extends TestCase
         assertEquals( 123456L, randomizer.getSeed() );
     }
 
+    @Test
     public void testSerialize()
     {
         // given
         Randomizer randomizer = new Randomizer( "123456" );
+
         // when
         String result = RandomizerSerializer.serialize( randomizer );
 

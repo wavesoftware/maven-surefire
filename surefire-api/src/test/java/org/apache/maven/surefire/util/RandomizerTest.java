@@ -19,17 +19,23 @@ package org.apache.maven.surefire.util;
  * under the License.
  */
 
+import org.junit.Test;
+
 import java.util.Random;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 
 /**
  * @author <a href="krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszyński</a>
  * @since 2016-04-02
  */
-public class RandomizerTest extends TestCase
+public class RandomizerTest
 {
 
+    @Test
     public void testGetSeed()
     {
         // given
@@ -40,26 +46,29 @@ public class RandomizerTest extends TestCase
 
         // then
         assertEquals( 123123, seedAsLong );
-
     }
 
+    @Test
     public void testGetGivenSeed()
     {
         // given
         String seed = "678";
         Randomizer randomizer = new Randomizer( seed );
+
         // when
         String given = randomizer.getGivenSeed();
+
         // then
         assertSame( seed, given );
-
     }
 
+    @Test
     public void testGetRandom()
     {
         // given
         String seed = "fdfrty";
         Randomizer randomizer = new Randomizer( seed );
+
         // when
         Random random = randomizer.getRandom();
         assertNotNull( random );
@@ -68,14 +77,17 @@ public class RandomizerTest extends TestCase
         random = randomizer.getRandom();
         assertNotNull( random );
         int second = random.nextInt();
+
         // then
         assertEquals( first, second );
     }
 
+    @Test
     public void testGetRandomRandomly()
     {
         // given
         Randomizer randomizer = new Randomizer();
+
         // when
         Random random = randomizer.getRandom();
         assertNotNull( random );
@@ -84,10 +96,12 @@ public class RandomizerTest extends TestCase
         Random secrandom = randomizer.getRandom();
         assertNotNull( secrandom );
         int second = random.nextInt();
+
         // then
         assertNotSame( first, second );
     }
 
+    @Test
     public void testCopyConstructor()
     {
         // given
