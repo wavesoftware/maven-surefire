@@ -274,15 +274,20 @@ public class SurefirePlugin
      * on odd hours), {@code failedfirst}, {@code balanced} and {@code filesystem}.
      * <br>
      * <br>
-     * When using "random" mode, actual seed used to randomize execution order will be printed on
-     * console. When tests fails to execution order binding, this seed number can be used
-     * by giving {@code random:seed} as a value of {@code runOrder} to reproduce
-     * that erroneous run execution, effectively executing tests with exact same order as they
-     * where when they failed. To reproduce a given seed most useful is to use command line
-     * option:
+     * When using {@code random} mode, actual <i>seed</i> used to randomize execution order will be printed on
+     * console. If the tests do not pass because they are bounded to the order in which they are executed,
+     * the <i>seed</i> number can be used to reproduce that erroneous execution. To do that pass
+     * {@code random:seed} as a value of {@code runOrder} parameter. This would effectively execute tests
+     * in same exact order as they where executed when they failed. It's most useful to pass it as a
+     * command line parameter:
      * <br>
      * <br>
      * {@code -Dsurefire.runOrder=random:325119}
+     * <br>
+     * <br>
+     * Note that due to bug <a href="https://issues.apache.org/jira/browse/MNG-4979">MNG-4979</a> it's
+     * better to configure {@code runOrder} in {@code pom.xml} file using Maven {@code properties},
+     * if you feel that you will need to change this parameter from the command line in the future.
      * <br>
      * <br>
      * Odd/Even for hourly is determined at the time the of scanning the classpath, meaning it could change during a
