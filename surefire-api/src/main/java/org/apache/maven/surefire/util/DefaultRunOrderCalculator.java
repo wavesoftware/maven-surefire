@@ -76,7 +76,8 @@ public class DefaultRunOrderCalculator
     {
         if ( RunOrder.RANDOM.equals( runOrder ) )
         {
-            Collections.shuffle( testClasses, runOrderParameters.getRandomizer().getRandom() );
+            ClassesShuffler shuffler = new ClassesShufflerImpl( runOrderParameters.getRandomizer() );
+            shuffler.shuffle( testClasses );
         }
         else if ( RunOrder.FAILEDFIRST.equals( runOrder ) )
         {

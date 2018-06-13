@@ -31,6 +31,7 @@ import org.apache.maven.surefire.suite.RunResultTest;
 import org.apache.maven.surefire.testset.FundamentalFilterTest;
 import org.apache.maven.surefire.testset.ResolvedTestTest;
 import org.apache.maven.surefire.testset.TestListResolverTest;
+import org.apache.maven.surefire.util.ClassesShufflerImplTest;
 import org.apache.maven.surefire.util.DefaultDirectoryScannerTest;
 import org.apache.maven.surefire.util.RandomizerTest;
 import org.apache.maven.surefire.util.ReflectionUtilsTest;
@@ -66,6 +67,7 @@ import org.junit.runners.Suite;
     ConcurrencyUtilsTest.class,
     StringUtilsTest.class,
     DefaultDirectoryScannerTest.class,
+    ClassesShufflerImplTest.class,
     RandomizerTest.class,
     RandomizerSerializerTest.class,
     RunOrderMapperTest.class,

@@ -43,9 +43,9 @@ public class RunOrderIT
 
     private static final String[] TESTS_IN_REVERSE_ALPHABETICAL_ORDER = { "TC", "TB", "TA" };
 
-    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_123456 = { "TA", "TC", "TB" };
+    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_123456 = { "TA", "TB", "TC" };
 
-    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_654321 = { "TB", "TC", "TA" };
+    private static final String[] TESTS_IN_RANDOM_ORDER_WITH_SEED_654321 = { "TC", "TB", "TA" };
 
     // testing random is left as an exercise to the reader. Patches welcome
 
