@@ -273,14 +273,7 @@ public class DefaultReporterFactory
             }
             else
             {
-                if ( seenError )
-                {
-                    return error;
-                }
-                else
-                {
-                    return failure;
-                }
+                return seenError ? error : failure;
             }
         }
         else if ( seenSuccess )
