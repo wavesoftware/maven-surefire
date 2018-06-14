@@ -28,16 +28,23 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
  * @since 2.19
  */
-public class TestNGSuiteTest {
-	private static final AtomicInteger counter = new AtomicInteger();
+public class TestNGSuiteTest
+{
+    private static final AtomicInteger counter = new AtomicInteger();
 
-	@Test
-	public void shouldRunAndPrintItself()
-		throws Exception
-	{
-		System.out.println( getClass().getSimpleName() + "#shouldRunAndPrintItself() "
-								+ counter.incrementAndGet() + ".");
+    @Test
+    public void shouldRunAndPrintItself() throws Exception
+    {
+        String message = String.format(
+                "%s#shouldRunAndPrintItself() %d.",
+                getClass().getSimpleName(),
+                counter.incrementAndGet()
+        );
+        TimeUnit.SECONDS.sleep( 1 );
 
-		TimeUnit.SECONDS.sleep( 2 );
-	}
+        synchronized ( System.out )
+        {
+            System.out.println( message );
+        }
+    }
 }
