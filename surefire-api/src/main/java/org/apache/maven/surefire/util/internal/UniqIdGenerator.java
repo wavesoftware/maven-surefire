@@ -1,4 +1,4 @@
-package testng.suiteXml;
+package org.apache.maven.surefire.util.internal;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,32 +19,36 @@ package testng.suiteXml;
  * under the License.
  */
 
-import org.testng.annotations.Test;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Random;
 
 /**
- * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
- * @since 2.19
+ * Creates a randomized simple long, using fast random
+ *
+ * @author <a href="mailto:krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszynski</a>
+ * @since 2016-04-01
  */
-public class TestNGSuiteTest
+public class UniqIdGenerator
 {
-    private static final AtomicInteger counter = new AtomicInteger();
+    private final Random random;
+    private final int lowerBound;
+    private final int upperBound;
 
-    @Test
-    public void shouldRunAndPrintItself() throws Exception
+    public UniqIdGenerator( int lowerBound, int upperBound )
     {
-        String message = String.format(
-                "%s#shouldRunAndPrintItself() %d.",
-                getClass().getSimpleName(),
-                counter.incrementAndGet()
-        );
-        TimeUnit.SECONDS.sleep( 1 );
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
+        this.random = getUnsecuredFastRandom();
+    }
 
-        synchronized ( System.out )
-        {
-            System.out.println( message );
-        }
+    public long generateUniqId()
+    {
+        int next = random.nextInt( upperBound - lowerBound );
+        next += lowerBound;
+        return next;
+    }
+
+    private static Random getUnsecuredFastRandom()
+    {
+        return new Random( System.currentTimeMillis() );
     }
 }

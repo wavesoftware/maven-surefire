@@ -19,18 +19,21 @@ package org.apache.maven.plugin.surefire.report;
  * under the License.
  */
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
 import junit.framework.TestCase;
-
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.maven.surefire.report.RunStatistics;
 import org.apache.maven.surefire.report.SafeThrowable;
 import org.apache.maven.surefire.report.StackTraceWriter;
+import org.apache.maven.surefire.testset.RunOrderParameters;
+import org.apache.maven.surefire.util.Randomizer;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.apache.maven.plugin.surefire.report.DefaultReporterFactory.TestResultType.error;
@@ -62,11 +65,17 @@ public class DefaultReporterFactoryTest
 
     public void testMergeTestHistoryResult()
     {
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.DEFAULT ),
+                null,
+                null
+        );
         MessageUtils.setColorEnabled( false );
         File reportsDirectory = new File("target");
         StartupReportConfiguration reportConfig =
                 new StartupReportConfiguration( true, true, "PLAIN", false, false, reportsDirectory, false, null,
-                                                      new File( reportsDirectory, "TESTHASH" ), false, 1, null, null );
+                                                      new File( reportsDirectory, "TESTHASH" ), false, 1, null, null,
+                                                      StartupReportConfiguration.DEFAULT_PLUGIN_NAME, runOrderParameters );
 
         DummyTestReporter reporter = new DummyTestReporter();
 
@@ -138,6 +147,38 @@ public class DefaultReporterFactoryTest
         factory.printTestFailures( failure );
         String[] expectedErrorOutput = { };
         assertEquals( asList( expectedErrorOutput ), reporter.getMessages() );
+    }
+
+    public void testRandomOrderMessages()
+    {
+        // given
+        String seed = "765432";
+        Randomizer randomizer = new Randomizer( seed );
+        RunOrderParameters runOrderParameters = new RunOrderParameters(
+                new RunOrders( RunOrder.RANDOM ),
+                randomizer,
+                null
+        );
+        String pluginName = StartupReportConfiguration.DEFAULT_PLUGIN_NAME;
+        StartupReportConfiguration reportConfig = new StartupReportConfiguration(
+                true, true, "PLAIN", false,
+                false, new File("target"), false,
+                null, new File("."), false,
+                1, null, "UTF-8",
+                pluginName, runOrderParameters );
+        DummyTestReporter consoleLogger = new DummyTestReporter();
+
+        DefaultReporterFactory factory = new DefaultReporterFactory( reportConfig, consoleLogger );
+        String expectedMessage = String.format( "Tests are randomly ordered. Re-run the same execution " +
+                "order with -D%s.runOrder=random:%s", pluginName, seed );
+
+        // when
+        factory.runStarting();
+
+        // then
+        List<String> messages = consoleLogger.getMessages();
+        assertTrue( messages.contains( " T E S T S" ) );
+        assertTrue( messages.contains( expectedMessage ) );
     }
 
     static final class DummyTestReporter implements ConsoleLogger

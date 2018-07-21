@@ -29,6 +29,7 @@ import org.apache.maven.surefire.report.RunListener;
 import org.apache.maven.surefire.report.RunStatistics;
 import org.apache.maven.surefire.report.StackTraceWriter;
 import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.util.Randomizer;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -164,6 +165,7 @@ public class DefaultReporterFactory
     {
         mergeTestHistoryResult();
         runCompleted();
+        displayRandomization();
         for ( TestSetRunListener listener : listeners )
         {
             listener.close();
@@ -177,6 +179,30 @@ public class DefaultReporterFactory
         log( "-------------------------------------------------------" );
         log( " T E S T S" );
         log( "-------------------------------------------------------" );
+        displayRandomization();
+    }
+
+    private boolean isRandomized()
+    {
+        return reportConfiguration.getRunOrderParameters() != null
+                && reportConfiguration.getRunOrderParameters().isRandomized();
+    }
+
+    private void displayRandomization()
+    {
+        if ( isRandomized() )
+        {
+            final Randomizer randomizer = reportConfiguration.getRunOrderParameters().getRandomizer();
+            final String pluginName = reportConfiguration.getPluginName();
+
+            log( "" );
+            log( String.format(
+                    "Tests are randomly ordered. Re-run the same execution order"
+                            + " with -D%s.runOrder=random:%d",
+                    pluginName, randomizer.getSeed()
+            ) );
+            log( "" );
+        }
     }
 
     private void runCompleted()
@@ -190,7 +216,7 @@ public class DefaultReporterFactory
         boolean printedFailures = printTestFailures( failure );
         boolean printedErrors = printTestFailures( error );
         boolean printedFlakes = printTestFailures( flake );
-        if ( printedFailures | printedErrors | printedFlakes )
+        if ( printedFailures || printedErrors || printedFlakes )
         {
             log( "" );
         }

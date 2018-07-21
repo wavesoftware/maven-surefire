@@ -26,7 +26,10 @@ import org.apache.maven.surefire.report.ConsoleOutputReceiver;
 import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
 import org.apache.maven.surefire.report.ReporterFactory;
 import org.apache.maven.surefire.report.RunListener;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestSetFailedException;
+import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 import org.junit.runner.Computer;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
@@ -104,7 +107,11 @@ public class JUnitCoreTester
     {
         File target = new File( "./target" );
         File statisticsFile = new File( target, "TESTHASHxXML" );
+        RunOrders runOrders = new RunOrders( RunOrder.DEFAULT );
+        RunOrderParameters runOrderParameters = new RunOrderParameters( runOrders, null, null );
         return new StartupReportConfiguration( true, true, "PLAIN", false, true, target, false, null, statisticsFile,
-                false, 0, null, null );
+                false, 0, null, null,
+                "surefire", runOrderParameters
+        );
     }
 }

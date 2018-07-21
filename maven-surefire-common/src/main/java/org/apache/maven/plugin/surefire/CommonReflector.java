@@ -19,15 +19,15 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.lang.reflect.Constructor;
-
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.surefire.booter.SurefireReflector;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.lang.reflect.Constructor;
 
 import static org.apache.maven.surefire.util.ReflectionUtils.getConstructor;
 import static org.apache.maven.surefire.util.ReflectionUtils.instantiateObject;
@@ -41,13 +41,17 @@ public class CommonReflector
     private final Class<?> startupReportConfiguration;
     private final Class<?> consoleLogger;
     private final ClassLoader surefireClassLoader;
+    private final Class<?> runOrderParametersClass;
+    private final SurefireReflector surefireReflector;
 
     public CommonReflector( @Nonnull ClassLoader surefireClassLoader )
     {
         this.surefireClassLoader = surefireClassLoader;
+        this.surefireReflector = new SurefireReflector( surefireClassLoader );
 
         try
         {
+            runOrderParametersClass = surefireClassLoader.loadClass( RunOrderParameters.class.getName() );
             startupReportConfiguration = surefireClassLoader.loadClass( StartupReportConfiguration.class.getName() );
             consoleLogger = surefireClassLoader.loadClass( ConsoleLogger.class.getName() );
         }
@@ -69,18 +73,26 @@ public class CommonReflector
 
     private Object createStartupReportConfiguration( @Nonnull StartupReportConfiguration reporterConfiguration )
     {
-        Constructor<?> constructor = getConstructor( startupReportConfiguration, boolean.class, boolean.class,
-                                                           String.class, boolean.class, boolean.class, File.class,
-                                                           boolean.class, String.class, File.class, boolean.class,
-                                                           int.class, String.class, String.class );
+        Constructor<?> constructor = getConstructor(
+                startupReportConfiguration, boolean.class, boolean.class, String.class, boolean.class,
+                boolean.class, File.class, boolean.class, String.class, File.class, boolean.class, int.class,
+                String.class, String.class, String.class, runOrderParametersClass
+        );
+        Object runOrderParameters = surefireReflector.createRunOrderParameters(
+                reporterConfiguration.getRunOrderParameters()
+        );
+
         //noinspection BooleanConstructorCall
-        Object[] params = { reporterConfiguration.isUseFile(), reporterConfiguration.isPrintSummary(),
-            reporterConfiguration.getReportFormat(), reporterConfiguration.isRedirectTestOutputToFile(),
-            reporterConfiguration.isDisableXmlReport(), reporterConfiguration.getReportsDirectory(),
-            reporterConfiguration.isTrimStackTrace(), reporterConfiguration.getReportNameSuffix(),
-            reporterConfiguration.getStatisticsFile(), reporterConfiguration.isRequiresRunHistory(),
-            reporterConfiguration.getRerunFailingTestsCount(), reporterConfiguration.getXsdSchemaLocation(),
-            reporterConfiguration.getEncoding().name() };
+        Object[] params = {
+                reporterConfiguration.isUseFile(), reporterConfiguration.isPrintSummary(),
+                reporterConfiguration.getReportFormat(), reporterConfiguration.isRedirectTestOutputToFile(),
+                reporterConfiguration.isDisableXmlReport(), reporterConfiguration.getReportsDirectory(),
+                reporterConfiguration.isTrimStackTrace(), reporterConfiguration.getReportNameSuffix(),
+                reporterConfiguration.getStatisticsFile(), reporterConfiguration.isRequiresRunHistory(),
+                reporterConfiguration.getRerunFailingTestsCount(), reporterConfiguration.getXsdSchemaLocation(),
+                reporterConfiguration.getEncoding().name(), reporterConfiguration.getPluginName(),
+                runOrderParameters
+        };
         return newInstance( constructor, params );
     }
 

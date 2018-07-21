@@ -1,4 +1,4 @@
-package testng.suiteXml;
+package junit.runOrder;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,32 +19,13 @@ package testng.suiteXml;
  * under the License.
  */
 
-import org.testng.annotations.Test;
+import junit.framework.TestCase;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-/**
- * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
- * @since 2.19
- */
-public class TestNGSuiteTest
+public class TestA
+    extends TestCase
 {
-    private static final AtomicInteger counter = new AtomicInteger();
-
-    @Test
-    public void shouldRunAndPrintItself() throws Exception
+    public void testA()
     {
-        String message = String.format(
-                "%s#shouldRunAndPrintItself() %d.",
-                getClass().getSimpleName(),
-                counter.incrementAndGet()
-        );
-        TimeUnit.SECONDS.sleep( 1 );
-
-        synchronized ( System.out )
-        {
-            System.out.println( message );
-        }
+        System.out.println( "TA" );
     }
 }

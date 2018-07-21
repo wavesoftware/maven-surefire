@@ -26,6 +26,7 @@ import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
 import org.apache.maven.plugin.surefire.report.TestcycleConsoleOutputReceiver;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
 import org.apache.maven.plugin.surefire.runorder.StatisticsReporter;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 
 import javax.annotation.Nonnull;
 import java.io.File;
@@ -35,9 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static org.apache.maven.plugin.surefire.report.ConsoleReporter.BRIEF;
 import static org.apache.maven.plugin.surefire.report.ConsoleReporter.PLAIN;
-import static org.apache.commons.lang3.StringUtils.trimToNull;
 
 /**
  * All the parameters used to construct reporters
@@ -50,6 +51,8 @@ public final class StartupReportConfiguration
     public static final String BRIEF_REPORT_FORMAT = BRIEF;
 
     public static final String PLAIN_REPORT_FORMAT = PLAIN;
+
+    public static final String DEFAULT_PLUGIN_NAME = "surefire";
 
     private final PrintStream originalSystemOut;
 
@@ -79,6 +82,10 @@ public final class StartupReportConfiguration
 
     private final String xsdSchemaLocation;
 
+    private final String pluginName;
+
+    private final RunOrderParameters runOrderParameters;
+
     private final Map<String, Map<String, List<WrappedReportEntry>>> testClassMethodRunHistory
         = new ConcurrentHashMap<String, Map<String, List<WrappedReportEntry>>>();
 
@@ -89,9 +96,10 @@ public final class StartupReportConfiguration
     @SuppressWarnings( "checkstyle:parameternumber" )
     public StartupReportConfiguration( boolean useFile, boolean printSummary, String reportFormat,
                                        boolean redirectTestOutputToFile, boolean disableXmlReport,
-                                       @Nonnull File reportsDirectory, boolean trimStackTrace, String reportNameSuffix,
-                                       File statisticsFile, boolean requiresRunHistory,
-                                       int rerunFailingTestsCount, String xsdSchemaLocation, String encoding )
+                                       @Nonnull File reportsDirectory, boolean trimStackTrace,
+                                       String reportNameSuffix, File statisticsFile, boolean requiresRunHistory,
+                                       int rerunFailingTestsCount, String xsdSchemaLocation, String encoding,
+                                       String pluginName, RunOrderParameters runOrderParameters )
     {
         this.useFile = useFile;
         this.printSummary = printSummary;
@@ -109,6 +117,8 @@ public final class StartupReportConfiguration
         this.xsdSchemaLocation = xsdSchemaLocation;
         String charset = trimToNull( encoding );
         this.encoding = charset == null ? Charset.defaultCharset() : Charset.forName( charset );
+        this.pluginName = pluginName;
+        this.runOrderParameters = runOrderParameters;
     }
 
     public boolean isUseFile()
@@ -216,5 +226,15 @@ public final class StartupReportConfiguration
     public Charset getEncoding()
     {
         return encoding;
+    }
+
+    public String getPluginName()
+    {
+        return pluginName;
+    }
+
+    public RunOrderParameters getRunOrderParameters()
+    {
+        return runOrderParameters;
     }
 }

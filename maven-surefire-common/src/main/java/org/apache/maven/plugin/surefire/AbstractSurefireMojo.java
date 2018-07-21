@@ -42,15 +42,16 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugin.surefire.booterclient.ChecksumCalculator;
+import org.apache.maven.plugin.surefire.booterclient.ClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ForkStarter;
-import org.apache.maven.plugin.surefire.booterclient.ClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.JarManifestForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ModularClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.Platform;
 import org.apache.maven.plugin.surefire.booterclient.ProviderDetector;
 import org.apache.maven.plugin.surefire.log.PluginConsoleLogger;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
+import org.apache.maven.plugin.surefire.runorder.RunOrderProcessor;
 import org.apache.maven.plugin.surefire.util.DependencyScanner;
 import org.apache.maven.plugin.surefire.util.DirectoryScanner;
 import org.apache.maven.plugins.annotations.Component;
@@ -82,14 +83,15 @@ import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.testset.TestSetFailedException;
 import org.apache.maven.surefire.util.DefaultScanResult;
 import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.util.RunOrders;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 import org.apache.maven.toolchain.DefaultToolchain;
 import org.apache.maven.toolchain.Toolchain;
 import org.apache.maven.toolchain.ToolchainManager;
-import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.languages.java.jpms.LocationManager;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsRequest;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsResult;
+import org.codehaus.plexus.logging.Logger;
 
 import javax.annotation.Nonnull;
 import java.io.File;
@@ -843,6 +845,8 @@ public abstract class AbstractSurefireMojo
 
     private volatile PluginConsoleLogger consoleLogger;
 
+    private RunOrderProcessor runOrderProcessor = new RunOrderProcessor();
+
     @Override
     public void execute()
         throws MojoExecutionException, MojoFailureException
@@ -1165,8 +1169,9 @@ public abstract class AbstractSurefireMojo
         SurefireProperties effectiveProperties = setupProperties();
         ClassLoaderConfiguration classLoaderConfiguration = getClassLoaderConfiguration();
         provider.addProviderProperties();
-        RunOrderParameters runOrderParameters =
-            new RunOrderParameters( getRunOrder(), getStatisticsFile( getConfigChecksum() ) );
+        File statisticsFile = getStatisticsFile( getConfigChecksum() );
+        RunOrderParameters runOrderParameters = runOrderProcessor
+                .createRunOrderParameters( getRunOrders(), statisticsFile );
 
         if ( isNotForking() )
         {
@@ -1607,16 +1612,9 @@ public abstract class AbstractSurefireMojo
         return getEffectiveForkMode( forkMode1 );
     }
 
-    private List<RunOrder> getRunOrders()
-    {
-        String runOrderString = getRunOrder();
-        RunOrder[] runOrder = runOrderString == null ? RunOrder.DEFAULT : RunOrder.valueOfMulti( runOrderString );
-        return asList( runOrder );
-    }
-
     private boolean requiresRunHistory()
     {
-        final List<RunOrder> runOrders = getRunOrders();
+        final RunOrders runOrders = getRunOrders();
         return runOrders.contains( RunOrder.BALANCED ) || runOrders.contains( RunOrder.FAILEDFIRST );
     }
 
@@ -1689,9 +1687,15 @@ public abstract class AbstractSurefireMojo
             // Collections.emptyList(); behaves same
             List<String> specificTests = Collections.emptyList();
 
+            RunOrders runOrders = getRunOrders();
             directoryScannerParameters =
-                new DirectoryScannerParameters( getTestClassesDirectory(), actualIncludes, actualExcludes,
-                                                specificTests, actualFailIfNoTests, getRunOrder() );
+                new DirectoryScannerParameters( getTestClassesDirectory(),
+                        actualIncludes,
+                        actualExcludes,
+                        specificTests,
+                        actualFailIfNoTests,
+                        runOrders
+                );
         }
 
         Map<String, String> providerProperties = toStringProperties( getProperties() );
@@ -1773,6 +1777,11 @@ public abstract class AbstractSurefireMojo
         }
     }
 
+    private RunOrders getRunOrders()
+    {
+        return runOrderProcessor.readRunOrders( getRunOrder() );
+    }
+
     private StartupConfiguration newStartupConfigForNonModularClasspath(
             @Nonnull ClassLoaderConfiguration classLoaderConfiguration, @Nonnull Classpath providerClasspath,
             @Nonnull Classpath inprocClasspath, @Nonnull String providerName )
@@ -1846,13 +1855,24 @@ public abstract class AbstractSurefireMojo
         return getPluginArtifactMap().get( "org.apache.maven.surefire:surefire-api" );
     }
 
-    private StartupReportConfiguration getStartupReportConfiguration( String configChecksum )
+    private StartupReportConfiguration getStartupReportConfiguration( String configChecksum,
+                                                                    RunOrderParameters runOrderParameters )
     {
-        return new StartupReportConfiguration( isUseFile(), isPrintSummary(), getReportFormat(),
-                                               isRedirectTestOutputToFile(), isDisableXmlReport(),
-                                               getReportsDirectory(), isTrimStackTrace(), getReportNameSuffix(),
-                                               getStatisticsFile( configChecksum ), requiresRunHistory(),
-                                               getRerunFailingTestsCount(), getReportSchemaLocation(), getEncoding() );
+        return new StartupReportConfiguration( isUseFile(),
+                                              isPrintSummary(),
+                                              getReportFormat(),
+                                              isRedirectTestOutputToFile(),
+                                              isDisableXmlReport(),
+                                              getReportsDirectory(),
+                                              isTrimStackTrace(),
+                                              getReportNameSuffix(),
+                                              getStatisticsFile( configChecksum ),
+                                              requiresRunHistory(),
+                                              getRerunFailingTestsCount(),
+                                              getReportSchemaLocation(),
+                                              getEncoding(),
+                                              getPluginName(),
+                                              runOrderParameters );
     }
 
     private boolean isSpecificTestSpecified()
@@ -2102,22 +2122,26 @@ public abstract class AbstractSurefireMojo
         StartupConfiguration startupConfiguration =
                 createStartupConfiguration( provider, false, classLoaderConfiguration, scanResult );
         String configChecksum = getConfigChecksum();
-        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration( configChecksum );
+        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration(
+                configChecksum, runOrderParameters
+        );
         ProviderConfiguration providerConfiguration = createProviderConfiguration( runOrderParameters );
         return new ForkStarter( providerConfiguration, startupConfiguration, forkConfiguration,
                                 getForkedProcessTimeoutInSeconds(), startupReportConfiguration, log );
     }
 
     private InPluginVMSurefireStarter createInprocessStarter( @Nonnull ProviderInfo provider,
-                                                             @Nonnull ClassLoaderConfiguration classLoaderConfiguration,
-                                                              @Nonnull RunOrderParameters runOrderParameters,
-                                                              @Nonnull DefaultScanResult scanResult )
+                                      @Nonnull ClassLoaderConfiguration classLoaderConfiguration,
+                                      @Nonnull RunOrderParameters runOrderParameters,
+                                      @Nonnull DefaultScanResult scanResult )
         throws MojoExecutionException, MojoFailureException
     {
         StartupConfiguration startupConfiguration =
                 createStartupConfiguration( provider, true, classLoaderConfiguration, scanResult );
         String configChecksum = getConfigChecksum();
-        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration( configChecksum );
+        StartupReportConfiguration startupReportConfiguration = getStartupReportConfiguration(
+                configChecksum, runOrderParameters
+        );
         ProviderConfiguration providerConfiguration = createProviderConfiguration( runOrderParameters );
         return new InPluginVMSurefireStarter( startupConfiguration, providerConfiguration, startupReportConfiguration,
                                               getConsoleLogger() );

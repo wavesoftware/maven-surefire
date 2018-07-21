@@ -1,4 +1,4 @@
-package testng.suiteXml;
+package org.apache.maven.surefire.util;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,32 +19,27 @@ package testng.suiteXml;
  * under the License.
  */
 
-import org.testng.annotations.Test;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nonnull;
+import javax.annotation.ParametersAreNonnullByDefault;
 
 /**
- * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
- * @since 2.19
+ * Represents an arguments for a given {@link RunOrder}.
+ *
+ * @author <a href="mailto:krzysztof.suszynski@wavesoftware.pl">Krzysztof Suszynski</a>
  */
-public class TestNGSuiteTest
+@ParametersAreNonnullByDefault
+public final class RunOrderArguments
 {
-    private static final AtomicInteger counter = new AtomicInteger();
+    private final Iterable<String> positional;
 
-    @Test
-    public void shouldRunAndPrintItself() throws Exception
+    RunOrderArguments( @Nonnull Iterable<String> positional )
     {
-        String message = String.format(
-                "%s#shouldRunAndPrintItself() %d.",
-                getClass().getSimpleName(),
-                counter.incrementAndGet()
-        );
-        TimeUnit.SECONDS.sleep( 1 );
+        this.positional = positional;
+    }
 
-        synchronized ( System.out )
-        {
-            System.out.println( message );
-        }
+    @Nonnull
+    public Iterable<String> getPositional()
+    {
+        return positional;
     }
 }
